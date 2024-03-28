@@ -19,31 +19,23 @@ fn main() {
 }
 
 fn handle_incoming_connection(mut stream: TcpStream) {
-    println!("accepted new connection");
-
+    let mut buf = [0; 512];
     loop {
-        let mut buf = [0; 1024];
-        match stream.read(&mut buf) {
-            Ok(bytes_read) => {
-                if bytes_read == 0 {
-                    // Connection closed by the client
-                    println!("Connection closed by client");
-                    break;
-                }
+        let bytes_read = stream.read(&mut buf).expect("Failed to read from client");
+        if bytes_read == 0 {
+            return;
+        }
 
-                let command = String::from_utf8_lossy(&buf[..bytes_read]);
-                println!("Received command: {}", command.trim());
-
-                if command.trim() == "ping" {
-                    stream
-                        .write_all("+PONG\r\n".as_bytes())
-                        .expect("Failed to write response");
-                }
-            }
-            Err(e) => {
-                println!("Error reading from stream: {}", e);
-                break;
-            }
+        let buf_str = std::str::from_utf8(&buf[0..bytes_read])
+            .unwrap()
+            .to_lowercase();
+        if buf_str.lines().filter(|line| line.contains("ping")).count() > 0 {
+            stream
+                .write_all(b"+PONG\r\n")
+                .expect("Failed to write to client");
+            println!("+PONG\r\n");
+        } else {
+            println!("Failed to extract command.");
         }
     }
 }
