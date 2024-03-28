@@ -5,8 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-type CommandCallback =
-    fn(&[&str], &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String;
+type CommandCallback = fn(&[&str], &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String;
 
 fn main() {
     println!("Logs from your program will appear here!");
@@ -76,17 +75,11 @@ fn handle_incoming_connection(
     }
 }
 
-fn ping_command(
-    _: &[&str],
-    _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
-) -> String {
+fn ping_command(_: &[&str], _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String {
     "+PONG\r\n".to_string()
 }
 
-fn echo_command(
-    parts: &[&str],
-    _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
-) -> String {
+fn echo_command(parts: &[&str], _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String {
     format!("{}\r\n{}\r\n", parts[3], parts[4])
 }
 
@@ -148,12 +141,14 @@ fn get_command(
                 expiry, now, elapsed
             );
 
+            format!("${}\r\n{}\r\n", value.len(), value)
+            /*
             if now < *expiry {
                 // Key has not expired
-                format!("${}\r\n{}\r\n", value.len(), value)
             } else {
                 "$-1\r\n".to_string() // Key has expired
             }
+             */
         } else {
             "$-1\r\n".to_string() // Key does not exist
         }
