@@ -111,7 +111,7 @@ fn set_command(
         if let Some(expiry) = expiry {
             expire_time = SystemTime::now() + Duration::from_millis(expiry);
         } else {
-            expire_time = SystemTime::now();
+            expire_time = SystemTime::now() + Duration::from_secs(3600); // Default expiry time of 1 hour
         }
 
         storage.insert(key.clone(), (value.clone(), expire_time));
