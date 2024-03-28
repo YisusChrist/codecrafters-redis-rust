@@ -24,57 +24,37 @@ fn main() {
 }
 
 fn handle_incoming_connection(mut stream: TcpStream) {
+    println!("accepted new connection");
+
     let mut buf = [0; 1024];
-    match stream.read(&mut buf) {
-        Ok(n) => {
-            let received = String::from_utf8_lossy(&buf[..n]);
-            let mut response = String::new();
-            let mut parts = received.trim().split("\r\n");
-
-            if let Some(command) = parts.next() {
-                if command.starts_with("*") {
-                    // Assuming a valid multi-bulk command
-                    if let Ok(count) = command[1..].parse::<usize>() {
-                        let mut data_parts = parts.collect::<Vec<_>>();
-                        if data_parts.len() >= count {
-                            for _ in 0..count {
-                                let command_type = data_parts.remove(0);
-                                match command_type {
-                                    "$4" => {
-                                        if let Some(data) = data_parts.pop() {
-                                            if command_type == "echo" {
-                                                response.push_str(&format!("+{}\r\n", data));
-                                            } else {
-                                                response.push_str("-Unknown command\r\n");
-                                            }
-                                        } else {
-                                            response.push_str("-Invalid data\r\n");
-                                        }
-                                    }
-                                    _ => {
-                                        response.push_str("-Unknown command\r\n");
-                                    }
-                                }
-                            }
-                        } else {
-                            response.push_str("-Incomplete command\r\n");
-                        }
-                    } else {
-                        response.push_str("-Invalid command count\r\n");
-                    }
-                } else {
-                    response.push_str("-Invalid protocol\r\n");
-                }
-            } else {
-                response.push_str("-Empty input\r\n");
+    loop {
+        let n = match stream.read(&mut buf) {
+            Ok(n) => n,
+            Err(_) => {
+                println!("Error reading from stream");
+                break;
             }
+        };
+        let received = String::from_utf8_lossy(&buf[..n]);
+        let parts = received.split("\r\n").collect::<Vec<&str>>();
+        if parts.len() == 0 || !(parts[0].starts_with("*")) {
+            continue;
+        }
 
-            if let Err(_) = stream.write_all(response.as_bytes()) {
+        let response = if parts[2] == "ping" {
+            "+PONG\r\n".to_string()
+        } else if parts[2] == "echo" {
+            format!("{}\r\n{}\r\n", parts[3], parts[4])
+        } else {
+            "Invalid command".to_string()
+        };
+
+        match stream.write(response.as_bytes()) {
+            Ok(_) => (),
+            Err(_) => {
                 println!("Error writing to stream");
+                break;
             }
-        }
-        Err(_) => {
-            println!("Error reading from stream");
-        }
+        };
     }
 }
