@@ -68,9 +68,7 @@ fn handle_incoming_connection(
                             expiry = Some(exp);
                             break;
                         } else {
-                            stream
-                                .write(b"-ERR invalid expiry time\r\n")
-                                .expect("Error writing to stream");
+                            break;
                         }
                     }
                 }
