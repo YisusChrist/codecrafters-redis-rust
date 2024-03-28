@@ -93,19 +93,23 @@ fn handle_incoming_connection(
             if parts.len() >= 4 {
                 let key = parts[4];
                 let storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
-                match storage.get(key) {
-                    Some((value, expiry)) => {
-                        if expiry.elapsed().unwrap_or(Duration::from_secs(0))
-                            > Duration::from_secs(0)
-                        {
-                            println!("Key has not expired");
-                            format!("${}\r\n{}\r\n", value.len(), value)
-                        } else {
-                            println!("Key has expired");
-                            "$-1\r\n".to_string() // Key has expired
-                        }
+                if let Some((value, expiry)) = storage.get(key) {
+                    let now = SystemTime::now();
+                    let elapsed = now
+                        .duration_since(*expiry)
+                        .unwrap_or(Duration::from_secs(0));
+                    println!(
+                        "Expiry: {:?}, Current Time: {:?}, Elapsed: {:?}",
+                        expiry, now, elapsed
+                    );
+
+                    if elapsed > Duration::from_secs(0) {
+                        format!("${}\r\n{}\r\n", value.len(), value)
+                    } else {
+                        "$-1\r\n".to_string() // Key has expired
                     }
-                    None => "$-1\r\n".to_string(), // Key does not exist
+                } else {
+                    "$-1\r\n".to_string() // Key does not exist
                 }
             } else {
                 "-ERR wrong number of arguments for 'get' command\r\n".to_string()
