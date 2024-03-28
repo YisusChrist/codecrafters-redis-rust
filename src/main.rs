@@ -96,7 +96,7 @@ fn set_command(
 
         // Parsing expiry time if present
         if let Some(px_index) = parts.iter().position(|&x| x.to_lowercase() == "px") {
-            if let Some(exp_str) = parts.get(px_index + 1) {
+            if let Some(exp_str) = parts.get(px_index + 2) {
                 if let Ok(exp) = exp_str.parse::<u64>() {
                     expiry = Some(exp);
                 }
