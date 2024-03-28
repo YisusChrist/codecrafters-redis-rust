@@ -1,39 +1,53 @@
-use std::io::{ErrorKind, Read, Write};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
+use std::io::{Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::thread;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     println!("Logs from your program will appear here!");
 
-    let listener = TcpListener::bind("127.0.0.1:6379")
-        .await
-        .expect("cannot bind to port 6379");
+    let addr = "127.0.0.1:6379";
+    let listener = TcpListener::bind(addr).unwrap();
 
-    loop {
-        let (stream, _) = listener.accept().await.unwrap();
-        tokio::spawn(async move {
-            handle_incoming_connection(stream).await;
-        });
-    }
-}
-
-async fn handle_incoming_connection(mut stream: TcpStream) {
-    println!("accepted new connection");
-    let mut buf = [0; 1024];
-    for _ in 0..1024 {
-        match stream.read(&mut buf).await.expect("Failed to read stream") {
-            0 => break,
-            _ => response(&mut stream, buf).await
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                thread::spawn(move || {
+                    handle_incoming_connection(stream);
+                });
+            }
+            Err(e) => {
+                println!("Error accepting stream: {}", e);
+                break;
+            }
         }
     }
 }
 
-async fn response(stream: &mut TcpStream, buf: [u8; 1024]) {
-    if true | (String::from_utf8(buf.to_vec()).expect("invalid bytes") == String::from("ping")) {
-        stream
-            .write_all("+PONG\r\n".as_bytes())
-            .await
-            .expect("cannot write to stream");
+fn handle_incoming_connection(mut stream: TcpStream) {
+    let mut buf = [0; 1024];
+    loop {
+        let n = match stream.read(&mut buf) {
+            Ok(n) => n,
+            Err(_) => {
+                println!("Error reading from stream");
+                break;
+            }
+        };
+        let received = String::from_utf8_lossy(&buf[..n]);
+        let response = if received.contains("ping") {
+            "+PONG\r\n".to_string()
+        } else if received.contains("echo") {
+            format!("$9\r\n{}\r\n", &received[16..].trim())
+        } else {
+            "Invalid command".to_string()
+        };
+
+        match stream.write(response.as_bytes()) {
+            Ok(_) => (),
+            Err(_) => {
+                println!("Error writing to stream");
+                break;
+            }
+        };
     }
 }

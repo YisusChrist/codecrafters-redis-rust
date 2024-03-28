@@ -204,3 +204,45 @@ The tester will expect to receive two `+PONG\r\n` responses.
 ### Notes
 
 - Since the tester client _only_ sends the PING command at the moment, it's okay to ignore what the client sends and hardcode a response. We'll get to parsing client input in later stages.
+
+## Stage 5: Implement the ECHO command
+
+### Your Task
+
+In this stage, you'll add support for the [ECHO](https://redis.io/commands/echo) command.
+
+`ECHO` is a command like `PING` that's used for testing and debugging. It accepts a single argument and returns it back as a RESP bulk string.
+
+```bash
+$ redis-cli ping # The command you implemented in previous stages
+PONG
+$ redis-cli echo hey # The command you'll implement in this stage
+hey
+
+```
+
+### Tests
+
+The tester will execute your program like this:
+
+```bash
+$ ./spawn_redis_server.sh
+
+```
+
+It'll then send an `ECHO` command with an argument to your server:
+
+```bash
+$ redis-cli echo hey
+
+```
+
+The tester will expect to receive `$3\r\nhey\r\n` as a response (that's the string `hey` encoded as a [RESP bulk string](https://redis.io/docs/reference/protocol-spec/#bulk-strings).
+
+### Notes
+
+- We suggest that you implement a proper Redis protocol parser in this stage. It'll come in handy in later stages.
+- Redis command names are case-insensitive, so `ECHO`, `echo` and `EcHo` are all valid commands.
+- The tester will send a random string as an argument to the `ECHO` command, so you won't be able to hardcode the response to pass this stage.
+- The exact bytes your program will receive won't be just `echo hey`, you'll receive something like this: `*2\r\n$4\r\necho\r\n$3\r\nhey\r\n`. That's `["echo", "hey"]` encoded using the [Redis protocol](https://redis.io/docs/reference/protocol-spec/).
+- You can read more about how "commands" are handled in the Redis protocol [here](https://redis.io/docs/reference/protocol-spec/#sending-commands-to-a-redis-server).
