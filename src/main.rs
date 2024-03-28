@@ -20,18 +20,30 @@ fn main() {
 
 fn handle_incoming_connection(mut stream: TcpStream) {
     println!("accepted new connection");
-    let mut buf = [0; 1024];
-    for _ in 0..1024 {
-        let bytes_read = stream.read(&mut buf).expect("Failed to read stream");
-        if bytes_read == 0 {
-            break;
-        }
-        print!["{}", String::from_utf8(buf.to_vec()).unwrap()];
-        if true | (String::from_utf8(buf.to_vec()).expect("invalid bytes") == String::from("ping"))
-        {
-            stream
-                .write_all("+PONG\r\n".as_bytes())
-                .expect("Failed to write")
+
+    loop {
+        let mut buf = [0; 1024];
+        match stream.read(&mut buf) {
+            Ok(bytes_read) => {
+                if bytes_read == 0 {
+                    // Connection closed by the client
+                    println!("Connection closed by client");
+                    break;
+                }
+
+                let command = String::from_utf8_lossy(&buf[..bytes_read]);
+                println!("Received command: {}", command.trim());
+
+                if command.trim() == "ping" {
+                    stream
+                        .write_all("+PONG\r\n".as_bytes())
+                        .expect("Failed to write response");
+                }
+            }
+            Err(e) => {
+                println!("Error reading from stream: {}", e);
+                break;
+            }
         }
     }
 }

@@ -137,3 +137,34 @@ Your server should respond with `+PONG\r\n`, which is "PONG" encoded as a [RESP 
 - You can ignore the data that the tester sends you for this stage. We'll get to parsing client input in later stages. For now, you can just hardcode `+PONG\r\n` as the response.
 - You can also ignore handling multiple clients and handling multiple PING commands in the stage, we'll get to that in later stages.
 - The exact bytes your program will receive won't be just `ping`, you'll receive something like this: `\*1\r\n$4\r\nping\r\n`, which is the Redis protocol encoding of the `PING` command. We'll learn more about this in later stages.
+
+## Stage 3: Respond to multiple PINGs
+
+In this stage, you'll respond to multiple [PING](https://redis.io/commands/ping) commands sent by the same connection.
+
+A Redis server starts to listen for the next command as soon as it's done responding to the previous one. This allows Redis clients to send multiple commands using the same connection.
+
+### Tests
+
+The tester will execute your program like this:
+
+```bash
+$ ./spawn_redis_server.sh
+
+```
+
+It'll then send two PING commands using the same connection:
+
+```bash
+$ echo -e "ping\nping" | redis-cli
+
+```
+
+The tester will expect to receive two `+PONG\r\n` responses.
+
+You'll need to run a loop that reads input from a connection and sends a response back.
+
+### Notes
+
+- Just like the previous stage, you can hardcode `+PONG\r\n` as the response for this stage. We'll get to parsing client input in later stages.
+- The two PING commands will be sent using the same connection. We'll get to handling multiple connections in later stages.
