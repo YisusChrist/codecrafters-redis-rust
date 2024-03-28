@@ -94,29 +94,20 @@ fn set_command(
         let value = parts[6].to_string();
         let mut expiry: Option<u64> = None;
 
-        print!("{:?}\n", parts);
-
         // Parsing expiry time if present
-        for i in 7..parts.len() {
-            if parts[i].to_lowercase() == "px" {
-                if let Ok(exp) = parts[i + 2].parse::<u64>() {
+        if let Some(px_index) = parts.iter().position(|&x| x.to_lowercase() == "px") {
+            if let Some(exp_str) = parts.get(px_index + 1) {
+                if let Ok(exp) = exp_str.parse::<u64>() {
                     expiry = Some(exp);
-                    break;
-                } else {
-                    break;
                 }
             }
         }
 
-        print!("Expiry: {:?}\n", expiry);
-
         let mut storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
         let expire_time: SystemTime;
         if let Some(expiry) = expiry {
-            println!("Set expiry: {}", expiry);
             expire_time = SystemTime::now() + Duration::from_millis(expiry);
         } else {
-            println!("Default expiry: 3600");
             expire_time = SystemTime::now() + Duration::from_secs(3600); // Default expiry time of 1 hour
         }
 
@@ -137,8 +128,6 @@ fn get_command(
         let storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
         if let Some((value, expiry)) = storage.get(key) {
             let now = SystemTime::now();
-            println!("Expiry: {:?}, Current Time: {:?}", expiry, now);
-
             if now < *expiry {
                 // Key has not expired
                 format!("${}\r\n{}\r\n", value.len(), value)
