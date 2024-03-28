@@ -98,8 +98,10 @@ fn handle_incoming_connection(
                         if expiry.elapsed().unwrap_or(Duration::from_secs(0))
                             > Duration::from_secs(0)
                         {
+                            println!("Key has not expired");
                             format!("${}\r\n{}\r\n", value.len(), value)
                         } else {
+                            println!("Key has expired");
                             "$-1\r\n".to_string() // Key has expired
                         }
                     }
