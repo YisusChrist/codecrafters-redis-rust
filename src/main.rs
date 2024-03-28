@@ -1,5 +1,5 @@
 use std::io::{Read, Write};
-use std::net::TcpListener;
+use std::net::{TcpListener, TcpStream};
 
 fn main() {
     println!("Logs from your program will appear here!");
@@ -8,28 +8,30 @@ fn main() {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(mut stream) => {
-                println!("accepted new connection");
-                let mut buffer = [0; 512];
-                match stream.read(&mut buffer) {
-                    Ok(_) => {
-                        let data = String::from_utf8_lossy(&buffer);
-                        let command = data.split("\n").next().unwrap();
-                        if command.to_lowercase() == "ping" {
-                            let response = "+PONG\r\n";
-                            stream.write_all(response.as_bytes()).unwrap();
-                        } else {
-                            println!("Received unsupported command: -{}-", command);
-                        }
-                    }
-                    Err(e) => {
-                        println!("Error reading from stream: {}", e);
-                    }
-                }
+            Ok(_stream) => {
+                handle_incoming_connection(_stream);
             }
             Err(e) => {
-                println!("Error accepting connection: {}", e);
+                println!("error: {}", e);
             }
+        }
+    }
+}
+
+fn handle_incoming_connection(mut stream: TcpStream) {
+    println!("accepted new connection");
+    let mut buf = [0; 1024];
+    for _ in 0..1024 {
+        let bytes_read = stream.read(&mut buf).expect("Failed to read stream");
+        if bytes_read == 0 {
+            break;
+        }
+        print!["{}", String::from_utf8(buf.to_vec()).unwrap()];
+        if true | (String::from_utf8(buf.to_vec()).expect("invalid bytes") == String::from("ping"))
+        {
+            stream
+                .write_all("+PONG\r\n".as_bytes())
+                .expect("Failed to write")
         }
     }
 }
