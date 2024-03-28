@@ -128,7 +128,7 @@ fn get_command(
     storage: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
 ) -> String {
     // Check if we have enough parts for GET command
-    if parts.len() < 4 {
+    if parts.len() >= 4 {
         let key = parts[4];
         let storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
         if let Some((value, expiry)) = storage.get(key) {
