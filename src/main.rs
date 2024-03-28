@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 fn main() {
@@ -7,12 +9,14 @@ fn main() {
 
     let addr = "127.0.0.1:6379";
     let listener = TcpListener::bind(addr).unwrap();
+    let storage = Arc::new(Mutex::new(HashMap::new())); // Shared storage wrapped in Mutex and Arc
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
+                let storage_clone = Arc::clone(&storage); // Clone the Arc for each thread
                 thread::spawn(move || {
-                    handle_incoming_connection(stream);
+                    handle_incoming_connection(stream, storage_clone);
                 });
             }
             Err(e) => {
@@ -23,7 +27,7 @@ fn main() {
     }
 }
 
-fn handle_incoming_connection(mut stream: TcpStream) {
+fn handle_incoming_connection(mut stream: TcpStream, storage: Arc<Mutex<HashMap<String, String>>>) {
     println!("accepted new connection");
 
     let mut buf = [0; 1024];
@@ -45,6 +49,30 @@ fn handle_incoming_connection(mut stream: TcpStream) {
             "+PONG\r\n".to_string()
         } else if parts[2] == "echo" {
             format!("{}\r\n{}\r\n", parts[3], parts[4])
+        } else if parts[2] == "set" {
+            // Check if we have enough parts for SET command
+            if parts.len() >= 6 {
+                // Assuming no extra options for simplicity
+                let key = parts[4].to_string();
+                let value = parts[6].to_string();
+                let mut storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
+                storage.insert(key, value);
+                "+OK\r\n".to_string()
+            } else {
+                "-ERR wrong number of arguments for 'set' command\r\n".to_string()
+            }
+        } else if parts[2] == "get" {
+            // Check if we have enough parts for GET command
+            if parts.len() >= 4 {
+                let key = parts[4];
+                let storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
+                match storage.get(key) {
+                    Some(value) => format!("${}\r\n{}\r\n", value.len(), value),
+                    None => "$-1\r\n".to_string(), // Key does not exist
+                }
+            } else {
+                "-ERR wrong number of arguments for 'get' command\r\n".to_string()
+            }
         } else {
             "Invalid command".to_string()
         };
