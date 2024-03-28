@@ -106,6 +106,8 @@ fn set_command(
             }
         }
 
+        print!("Expiry: {:?}\n", expiry);
+
         let mut storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
         let expire_time: SystemTime;
         if let Some(expiry) = expiry {
