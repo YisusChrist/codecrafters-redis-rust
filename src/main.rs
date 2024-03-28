@@ -15,7 +15,7 @@ fn main() {
                     Ok(_) => {
                         let data = String::from_utf8_lossy(&buffer);
                         let command = data.split("\n").next().unwrap();
-                        if command == "PING" {
+                        if command.to_lowercase() == "ping" {
                             let response = "+PONG\r\n";
                             stream.write_all(response.as_bytes()).unwrap();
                         } else {
