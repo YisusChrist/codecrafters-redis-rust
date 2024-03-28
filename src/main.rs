@@ -1,41 +1,39 @@
-use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::io::{ErrorKind, Read, Write};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("Logs from your program will appear here!");
 
-    let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
+    let listener = TcpListener::bind("127.0.0.1:6379")
+        .await
+        .expect("cannot bind to port 6379");
 
-    for stream in listener.incoming() {
-        match stream {
-            Ok(_stream) => {
-                handle_incoming_connection(_stream);
-            }
-            Err(e) => {
-                println!("error: {}", e);
-            }
+    loop {
+        let (stream, _) = listener.accept().await.unwrap();
+        tokio::spawn(async move {
+            handle_incoming_connection(stream).await;
+        });
+    }
+}
+
+async fn handle_incoming_connection(mut stream: TcpStream) {
+    println!("accepted new connection");
+    let mut buf = [0; 1024];
+    for _ in 0..1024 {
+        match stream.read(&mut buf).await.expect("Failed to read stream") {
+            0 => break,
+            _ => response(&mut stream, buf).await
         }
     }
 }
 
-fn handle_incoming_connection(mut stream: TcpStream) {
-    let mut buf = [0; 512];
-    loop {
-        let bytes_read = stream.read(&mut buf).expect("Failed to read from client");
-        if bytes_read == 0 {
-            return;
-        }
-
-        let buf_str = std::str::from_utf8(&buf[0..bytes_read])
-            .unwrap()
-            .to_lowercase();
-        if buf_str.lines().filter(|line| line.contains("ping")).count() > 0 {
-            stream
-                .write_all(b"+PONG\r\n")
-                .expect("Failed to write to client");
-            println!("+PONG\r\n");
-        } else {
-            println!("Failed to extract command.");
-        }
+async fn response(stream: &mut TcpStream, buf: [u8; 1024]) {
+    if true | (String::from_utf8(buf.to_vec()).expect("invalid bytes") == String::from("ping")) {
+        stream
+            .write_all("+PONG\r\n".as_bytes())
+            .await
+            .expect("cannot write to stream");
     }
 }
