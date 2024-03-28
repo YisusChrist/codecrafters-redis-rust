@@ -103,7 +103,8 @@ fn handle_incoming_connection(
                         expiry, now, elapsed
                     );
 
-                    if elapsed > Duration::from_secs(0) {
+                    if now < *expiry {
+                        // Key has not expired
                         format!("${}\r\n{}\r\n", value.len(), value)
                     } else {
                         "$-1\r\n".to_string() // Key has expired
