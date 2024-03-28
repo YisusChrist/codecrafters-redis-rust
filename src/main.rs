@@ -141,14 +141,12 @@ fn get_command(
                 expiry, now, elapsed
             );
 
-            format!("${}\r\n{}\r\n", value.len(), value)
-            /*
             if now < *expiry {
                 // Key has not expired
+                format!("${}\r\n{}\r\n", value.len(), value)
             } else {
                 "$-1\r\n".to_string() // Key has expired
             }
-             */
         } else {
             "$-1\r\n".to_string() // Key does not exist
         }
