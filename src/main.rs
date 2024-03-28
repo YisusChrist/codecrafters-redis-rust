@@ -24,6 +24,8 @@ fn main() {
 }
 
 fn handle_incoming_connection(mut stream: TcpStream) {
+    println!("accepted new connection");
+
     let mut buf = [0; 1024];
     loop {
         let n = match stream.read(&mut buf) {
@@ -37,7 +39,8 @@ fn handle_incoming_connection(mut stream: TcpStream) {
         let response = if received.contains("ping") {
             "+PONG\r\n".to_string()
         } else if received.contains("echo") {
-            format!("$9\r\n{}\r\n", &received[16..].trim())
+            let data = received.split_whitespace().collect::<Vec<&str>>();
+            format!("${}\r\n{}\r\n", data[1].len(), data[1])
         } else {
             "Invalid command".to_string()
         };
