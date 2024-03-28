@@ -109,8 +109,10 @@ fn set_command(
         let mut storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
         let expire_time: SystemTime;
         if let Some(expiry) = expiry {
+            println!("Set expiry: {}", expiry);
             expire_time = SystemTime::now() + Duration::from_millis(expiry);
         } else {
+            println!("Default expiry: 3600");
             expire_time = SystemTime::now() + Duration::from_secs(3600); // Default expiry time of 1 hour
         }
 
@@ -131,13 +133,7 @@ fn get_command(
         let storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
         if let Some((value, expiry)) = storage.get(key) {
             let now = SystemTime::now();
-            let elapsed = now
-                .duration_since(*expiry)
-                .unwrap_or(Duration::from_secs(0));
-            println!(
-                "Expiry: {:?}, Current Time: {:?}, Elapsed: {:?}",
-                expiry, now, elapsed
-            );
+            println!("Expiry: {:?}, Current Time: {:?}", expiry, now);
 
             if now < *expiry {
                 // Key has not expired
