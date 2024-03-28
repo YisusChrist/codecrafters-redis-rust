@@ -3,6 +3,7 @@ use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::{Duration, SystemTime};
 
 fn main() {
     println!("Logs from your program will appear here!");
@@ -27,7 +28,10 @@ fn main() {
     }
 }
 
-fn handle_incoming_connection(mut stream: TcpStream, storage: Arc<Mutex<HashMap<String, String>>>) {
+fn handle_incoming_connection(
+    mut stream: TcpStream,
+    storage: Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+) {
     println!("accepted new connection");
 
     let mut buf = [0; 1024];
@@ -55,9 +59,34 @@ fn handle_incoming_connection(mut stream: TcpStream, storage: Arc<Mutex<HashMap<
                 // Assuming no extra options for simplicity
                 let key = parts[4].to_string();
                 let value = parts[6].to_string();
+                let mut expiry: Option<u64> = None;
+
+                // Parsing expiry time if present
+                for i in 7..parts.len() {
+                    if parts[i].to_lowercase() == "px" {
+                        if let Ok(exp) = parts[i + 1].parse::<u64>() {
+                            expiry = Some(exp);
+                            break;
+                        } else {
+                            stream
+                                .write(b"-ERR invalid expiry time\r\n")
+                                .expect("Error writing to stream");
+                        }
+                    }
+                }
+
                 let mut storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
-                storage.insert(key, value);
-                "+OK\r\n".to_string()
+                if let Some(expiry) = expiry {
+                    let now = SystemTime::now();
+                    storage.insert(
+                        key.clone(),
+                        (value.clone(), now + Duration::from_millis(expiry)),
+                    );
+                    "+OK\r\n".to_string()
+                } else {
+                    storage.insert(key.clone(), (value.clone(), SystemTime::now()));
+                    "+OK\r\n".to_string()
+                }
             } else {
                 "-ERR wrong number of arguments for 'set' command\r\n".to_string()
             }
@@ -67,7 +96,15 @@ fn handle_incoming_connection(mut stream: TcpStream, storage: Arc<Mutex<HashMap<
                 let key = parts[4];
                 let storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
                 match storage.get(key) {
-                    Some(value) => format!("${}\r\n{}\r\n", value.len(), value),
+                    Some((value, expiry)) => {
+                        if expiry.elapsed().unwrap_or(Duration::from_secs(0))
+                            > Duration::from_secs(0)
+                        {
+                            format!("${}\r\n{}\r\n", value.len(), value)
+                        } else {
+                            "$-1\r\n".to_string() // Key has expired
+                        }
+                    }
                     None => "$-1\r\n".to_string(), // Key does not exist
                 }
             } else {

@@ -10,6 +10,41 @@ event loops, the Redis protocol and more.
 **Note**: If you're viewing this repo on GitHub, head over to
 [codecrafters.io](https://codecrafters.io) to try the challenge.
 
+- [Introduction](#introduction)
+- [Repository Setup](#repository-setup)
+- [Passing the first stage](#passing-the-first-stage)
+- [Stage 2 \& beyond](#stage-2--beyond)
+- [Functionalities implemented for each stage](#functionalities-implemented-for-each-stage)
+  - [Stage 1: Bind to a port](#stage-1-bind-to-a-port)
+    - [Your Task](#your-task)
+    - [Tests](#tests)
+    - [Notes](#notes)
+  - [Stage 2: Respond to PING](#stage-2-respond-to-ping)
+    - [Prerequisites](#prerequisites)
+    - [Your Task](#your-task-1)
+    - [Tests](#tests-1)
+    - [Notes](#notes-1)
+  - [Stage 3: Respond to multiple PINGs](#stage-3-respond-to-multiple-pings)
+    - [Your Task](#your-task-2)
+    - [Tests](#tests-2)
+    - [Notes](#notes-2)
+  - [Stage 4: Handle concurrent clients](#stage-4-handle-concurrent-clients)
+    - [Your Task](#your-task-3)
+    - [Tests](#tests-3)
+    - [Notes](#notes-3)
+  - [Stage 5: Implement the ECHO command](#stage-5-implement-the-echo-command)
+    - [Your Task](#your-task-4)
+    - [Tests](#tests-4)
+    - [Notes](#notes-4)
+  - [Stage 6: Implement the SET \& GET commands](#stage-6-implement-the-set--get-commands)
+    - [Your Task](#your-task-5)
+    - [Tests](#tests-5)
+    - [Notes](#notes-5)
+  - [Stage 7: Expiry](#stage-7-expiry)
+    - [Your Task](#your-task-6)
+    - [Tests](#tests-6)
+    - [Notes](#notes-6)
+
 # Introduction
 
 Welcome to the Build your own Redis challenge!
@@ -24,13 +59,15 @@ We've prepared a starter repository with some Rust code for you.
 
 Step 1: Clone the repository.
 
-````sh
-git clone https://git.codecrafters.io/a6d6aeeafdfc7c25 codecrafters-redis-rust && cd codecrafters-redis-rust```
+```sh
+git clone https://git.codecrafters.io/a6d6aeeafdfc7c25 codecrafters-redis-rust && cd codecrafters-redis-rust
+```
 
 Step 2: Push an empty commit.
 
 ```sh
-git commit --allow-empty -m 'test' && git push origin master```
+git commit --allow-empty -m 'test' && git push origin master
+```
 
 When you run the above command, the "Listening for a git push" message below will change, and the first stage will be activated.
 
@@ -42,7 +79,8 @@ uncomment the relevant code, and push your changes to pass the first stage:
 ```sh
 git add .
 git commit -m "pass 1st stage" # any msg
-git push origin master```
+git push origin master
+```
 
 That's all!
 
@@ -71,16 +109,17 @@ In this stage, you'll implement a TCP server that listens on port 6379.
 
 Don't worry if you're unfamiliar with the TCP protocol, or what Redis clients & servers are. You'll learn more about this in the next stages.
 
-#### Tests
+### Tests
 
 The tester will execute your program like this:
 
 ```sh
-$ ./spawn_redis_server.sh```
+$ ./spawn_redis_server.sh
+```
 
 It'll then try to connect to your TCP server on port 6379. If the connection succeeds, you'll pass this stage.
 
-#### Notes
+### Notes
 
 - 6379 is the default port that Redis uses.
 - If you already have a Redis server running on your machine and listening on port 6379, you'll see a "port already in use" error when running your code. Try stopping the existing Redis server and running your code again.
@@ -112,21 +151,23 @@ The response for the `PING` command is `+PONG\r\n`. This is the string "PONG" en
 
 In this stage, we'll cut corners by ignoring client input and hardcoding `+PONG\r\n` as a response. We'll learn to parse client input in later stages.
 
-#### Tests
+### Tests
 
 The tester will execute your program like this:
 
 ```sh
-$ ./spawn_redis_server.sh```
+$ ./spawn_redis_server.sh
+```
 
 It'll then send a `PING` command to your server and expect a `+PONG\r\n` response.
 
 ```sh
-$ redis-cli ping```
+$ redis-cli ping
+```
 
 Your server should respond with `+PONG\r\n`, which is "PONG" encoded as a [RESP simple string](https://redis.io/docs/reference/protocol-spec/#resp-simple-strings).
 
-#### Notes
+### Notes
 
 - You can ignore the data that the tester sends you for this stage. We'll get to parsing client input in later stages. For now, you can just hardcode `+PONG\r\n` as the response.
 - You can also ignore handling multiple clients and handling multiple PING commands in the stage, we'll get to that in later stages.
@@ -146,7 +187,7 @@ The tester will execute your program like this:
 
 ```bash
 $ ./spawn_redis_server.sh
-````
+```
 
 It'll then send two PING commands using the same connection:
 
@@ -236,7 +277,7 @@ The tester will expect to receive `$3\r\nhey\r\n` as a response (that's the stri
 
 ## Stage 6: Implement the SET & GET commands
 
-## Your Task
+### Your Task
 
 In this stage, you'll add support for the [SET](https://redis.io/commands/set) & [GET](https://redis.io/commands/get) commands.
 
@@ -280,3 +321,53 @@ The tester will expect to receive `$3\r\nbar\r\n` as a response (that's the stri
 - If you implemented a proper Redis protocol parser in the previous stage, you should be able to reuse it in this stage.
 - Just like the previous stage, the values used for keys and values will be random, so you won't be able to hardcode the response to pass this stage.
 - If a key doesn't exist, the `GET` command should return a "null bulk string" (`$-1\r\n`). We won't explicitly test this in this stage, but you'll need it for the next stage (expiry).
+
+## Stage 7: Expiry
+
+### Your Task
+
+In this stage, you'll add support for setting a key with an expiry.
+
+The expiry for a key can be provided using the "PX" argument to the [SET](https://redis.io/commands/set) command. The expiry is provided in milliseconds.
+
+```bash
+$ redis-cli set foo bar px 100 # Sets the key "foo" to "bar" with an expiry of 100 milliseconds
+OK
+```
+
+After the key has expired, a `GET` command for that key should return a "null bulk string" (`$-1\r\n`).
+
+### Tests
+
+The tester will execute your program like this:
+
+```bash
+$ ./spawn_redis_server.sh
+```
+
+It'll then send a `SET` command to your server to set a key with an expiry:
+
+```bash
+$ redis-cli set foo bar px 100
+```
+
+It'll then immediately send a `GET` command to retrieve the value:
+
+```bash
+$ redis-cli get foo
+```
+
+It'll expect the response to be `bar` (encoded as a RESP bulk string).
+
+It'll then wait for the key to expire and send another `GET` command:
+
+```bash
+$ sleep 0.2 && redis-cli get foo
+```
+
+It'll expect the response to be `$-1\r\n` (a "null bulk string").
+
+### Notes
+
+- Just like command names, command arguments are also case-insensitive. So `PX`, `px` and `pX` are all valid.
+- The keys, values and expiry times used in the tests will be random, so you won't be able to hardcode a response to pass this stage.
