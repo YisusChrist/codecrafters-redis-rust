@@ -5,6 +5,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime};
 
+type CommandCallback =
+    fn(&[&str], &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String;
+
 fn main() {
     println!("Logs from your program will appear here!");
 
@@ -12,12 +15,19 @@ fn main() {
     let listener = TcpListener::bind(addr).unwrap();
     let storage = Arc::new(Mutex::new(HashMap::new())); // Shared storage wrapped in Mutex and Arc
 
+    let mut commands: HashMap<&str, CommandCallback> = HashMap::new();
+    commands.insert("ping", ping_command);
+    commands.insert("echo", echo_command);
+    commands.insert("set", set_command);
+    commands.insert("get", get_command);
+
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 let storage_clone = Arc::clone(&storage); // Clone the Arc for each thread
+                let commands = commands.clone();
                 thread::spawn(move || {
-                    handle_incoming_connection(stream, storage_clone);
+                    handle_incoming_connection(stream, commands, storage_clone);
                 });
             }
             Err(e) => {
@@ -30,6 +40,7 @@ fn main() {
 
 fn handle_incoming_connection(
     mut stream: TcpStream,
+    commands: HashMap<&str, CommandCallback>,
     storage: Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
 ) {
     println!("accepted new connection");
@@ -49,82 +60,104 @@ fn handle_incoming_connection(
             continue;
         }
 
-        let response = if parts[2] == "ping" {
-            "+PONG\r\n".to_string()
-        } else if parts[2] == "echo" {
-            format!("{}\r\n{}\r\n", parts[3], parts[4])
-        } else if parts[2] == "set" {
-            // Check if we have enough parts for SET command
-            if parts.len() >= 6 {
-                // Assuming no extra options for simplicity
-                let key = parts[4].to_string();
-                let value = parts[6].to_string();
-                let mut expiry: Option<u64> = None;
-
-                // Parsing expiry time if present
-                for i in 7..parts.len() {
-                    if parts[i].to_lowercase() == "px" {
-                        if let Ok(exp) = parts[i + 1].parse::<u64>() {
-                            expiry = Some(exp);
-                            break;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-
-                let mut storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
-                if let Some(expiry) = expiry {
-                    let now = SystemTime::now();
-                    storage.insert(
-                        key.clone(),
-                        (value.clone(), now + Duration::from_millis(expiry)),
-                    );
-                    "+OK\r\n".to_string()
-                } else {
-                    storage.insert(key.clone(), (value.clone(), SystemTime::now()));
-                    "+OK\r\n".to_string()
-                }
-            } else {
-                "-ERR wrong number of arguments for 'set' command\r\n".to_string()
-            }
-        } else if parts[2] == "get" {
-            // Check if we have enough parts for GET command
-            if parts.len() >= 4 {
-                let key = parts[4];
-                let storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
-                if let Some((value, expiry)) = storage.get(key) {
-                    let now = SystemTime::now();
-                    let elapsed = now
-                        .duration_since(*expiry)
-                        .unwrap_or(Duration::from_secs(0));
-                    println!(
-                        "Expiry: {:?}, Current Time: {:?}, Elapsed: {:?}",
-                        expiry, now, elapsed
-                    );
-
-                    if now < *expiry {
-                        // Key has not expired
-                        format!("${}\r\n{}\r\n", value.len(), value)
-                    } else {
-                        "$-1\r\n".to_string() // Key has expired
-                    }
-                } else {
-                    "$-1\r\n".to_string() // Key does not exist
-                }
-            } else {
-                "-ERR wrong number of arguments for 'get' command\r\n".to_string()
-            }
-        } else {
-            "Invalid command".to_string()
-        };
-
-        match stream.write(response.as_bytes()) {
-            Ok(_) => (),
-            Err(_) => {
+        if let Some(callback) = commands.get(parts[2]) {
+            let response = callback(&parts, &storage);
+            if let Err(_) = stream.write(response.as_bytes()) {
                 println!("Error writing to stream");
                 break;
             }
-        };
+        } else {
+            let response = "Invalid command".to_string();
+            if let Err(_) = stream.write(response.as_bytes()) {
+                println!("Error writing to stream");
+                break;
+            }
+        }
+    }
+}
+
+fn ping_command(
+    _: &[&str],
+    _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+) -> String {
+    "+PONG\r\n".to_string()
+}
+
+fn echo_command(
+    parts: &[&str],
+    _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+) -> String {
+    format!("{}\r\n{}\r\n", parts[3], parts[4])
+}
+
+fn set_command(
+    parts: &[&str],
+    storage: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+) -> String {
+    // Check if we have enough parts for SET command
+    if parts.len() >= 6 {
+        // Assuming no extra options for simplicity
+        let key = parts[4].to_string();
+        let value = parts[6].to_string();
+        let mut expiry: Option<u64> = None;
+
+        // Parsing expiry time if present
+        for i in 7..parts.len() {
+            if parts[i].to_lowercase() == "px" {
+                if let Ok(exp) = parts[i + 1].parse::<u64>() {
+                    expiry = Some(exp);
+                    break;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        let mut storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
+        if let Some(expiry) = expiry {
+            let now = SystemTime::now();
+            storage.insert(
+                key.clone(),
+                (value.clone(), now + Duration::from_millis(expiry)),
+            );
+            "+OK\r\n".to_string()
+        } else {
+            storage.insert(key.clone(), (value.clone(), SystemTime::now()));
+            "+OK\r\n".to_string()
+        }
+    } else {
+        "-ERR wrong number of arguments for 'set' command\r\n".to_string()
+    }
+}
+
+fn get_command(
+    parts: &[&str],
+    storage: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+) -> String {
+    // Check if we have enough parts for GET command
+    if parts.len() < 4 {
+        let key = parts[4];
+        let storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
+        if let Some((value, expiry)) = storage.get(key) {
+            let now = SystemTime::now();
+            let elapsed = now
+                .duration_since(*expiry)
+                .unwrap_or(Duration::from_secs(0));
+            println!(
+                "Expiry: {:?}, Current Time: {:?}, Elapsed: {:?}",
+                expiry, now, elapsed
+            );
+
+            if now < *expiry {
+                // Key has not expired
+                format!("${}\r\n{}\r\n", value.len(), value)
+            } else {
+                "$-1\r\n".to_string() // Key has expired
+            }
+        } else {
+            "$-1\r\n".to_string() // Key does not exist
+        }
+    } else {
+        "-ERR wrong number of arguments for 'get' command\r\n".to_string()
     }
 }
