@@ -1,5 +1,5 @@
-use std::net::TcpListener;
 use std::io::{Read, Write};
+use std::net::TcpListener;
 
 fn main() {
     println!("Logs from your program will appear here!");
@@ -13,12 +13,13 @@ fn main() {
                 let mut buffer = [0; 512];
                 match stream.read(&mut buffer) {
                     Ok(_) => {
-                        let command = String::from_utf8_lossy(&buffer);
-                        if command.trim() == "PING" {
+                        let data = String::from_utf8_lossy(&buffer);
+                        let command = data.split("\n").next().unwrap();
+                        if command == "PING" {
                             let response = "+PONG\r\n";
                             stream.write_all(response.as_bytes()).unwrap();
                         } else {
-                            println!("Received unsupported command: {}", command.trim());
+                            println!("Received unsupported command: -{}-", command);
                         }
                     }
                     Err(e) => {
