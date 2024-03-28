@@ -107,17 +107,15 @@ fn set_command(
         }
 
         let mut storage = storage.lock().unwrap(); // Lock the Mutex before accessing the HashMap
+        let expire_time: SystemTime;
         if let Some(expiry) = expiry {
-            let now = SystemTime::now();
-            storage.insert(
-                key.clone(),
-                (value.clone(), now + Duration::from_millis(expiry)),
-            );
-            "+OK\r\n".to_string()
+            expire_time = SystemTime::now() + Duration::from_millis(expiry);
         } else {
-            storage.insert(key.clone(), (value.clone(), SystemTime::now()));
-            "+OK\r\n".to_string()
+            expire_time = SystemTime::now();
         }
+
+        storage.insert(key.clone(), (value.clone(), expire_time));
+        "+OK\r\n".to_string()
     } else {
         "-ERR wrong number of arguments for 'set' command\r\n".to_string()
     }
