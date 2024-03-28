@@ -94,6 +94,8 @@ fn set_command(
         let value = parts[6].to_string();
         let mut expiry: Option<u64> = None;
 
+        print!("{:?}\n", parts);
+
         // Parsing expiry time if present
         for i in 7..parts.len() {
             if parts[i].to_lowercase() == "px" {
