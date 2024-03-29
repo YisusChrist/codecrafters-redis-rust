@@ -1,18 +1,25 @@
+use crate::role::ServerRole;
+
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::time::SystemTime;
 
 pub type CommandCallback =
-    fn(&[&str], &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String;
+    fn(&[&str], &Arc<Mutex<HashMap<String, (String, SystemTime)>>>, &ServerRole) -> String;
 
-fn ping_command(_: &[&str], _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String {
+fn ping_command(
+    _: &[&str],
+    _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+    _: &ServerRole,
+) -> String {
     "+PONG\r\n".to_string()
 }
 
 fn echo_command(
     parts: &[&str],
     _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+    _: &ServerRole,
 ) -> String {
     format!("{}\r\n{}\r\n", parts[3], parts[4])
 }
@@ -20,6 +27,7 @@ fn echo_command(
 fn set_command(
     parts: &[&str],
     storage: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+    _: &ServerRole,
 ) -> String {
     // Check if we have enough parts for SET command
     if parts.len() >= 6 {
@@ -55,6 +63,7 @@ fn set_command(
 fn get_command(
     parts: &[&str],
     storage: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+    _: &ServerRole,
 ) -> String {
     // Check if we have enough parts for GET command
     if parts.len() >= 4 {
@@ -79,11 +88,15 @@ fn get_command(
 fn info_command(
     parts: &[&str],
     _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+    server_role: &ServerRole,
 ) -> String {
     // Replication section of the INFO command
     // For now, only support the role key
     if parts[4] == "replication" {
-        let role = "master"; // Assuming this server is always the master
+        let role = match server_role {
+            ServerRole::Master => "master",
+            ServerRole::Replica { .. } => "slave",
+        };
         format!("$11\r\nrole:{}\r\n", role)
     } else {
         "-ERR wrong number of arguments for 'info' command\r\n".to_string()

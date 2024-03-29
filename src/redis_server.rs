@@ -1,4 +1,5 @@
 use crate::command::{get_commands, CommandCallback};
+use crate::role::ServerRole;
 
 use std::collections::HashMap;
 use std::io::{Read, Write};
@@ -17,8 +18,9 @@ pub fn start_master_server(port: u16) {
     println!("Starting master Redis server on {}", addr);
     let listener = TcpListener::bind(addr).unwrap();
 
+    let role = Arc::new(ServerRole::Master);
     // Accept and handle incoming connections
-    accept_connections(listener, storage, commands);
+    accept_connections(listener, storage, commands, role);
 }
 
 pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
@@ -44,22 +46,28 @@ pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
     println!("Starting replica Redis server on {}", addr);
     let listener = TcpListener::bind(addr).unwrap();
 
+    let role = Arc::new(ServerRole::Replica {
+        master_host,
+        master_port,
+    });
     // Accept and handle incoming connections
-    accept_connections(listener, storage, commands);
+    accept_connections(listener, storage, commands, role);
 }
 
 fn accept_connections(
     listener: TcpListener,
     storage: Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
     commands: HashMap<&'static str, CommandCallback>,
+    role: Arc<ServerRole>,
 ) {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 let storage_clone = Arc::clone(&storage); // Clone the Arc for each thread
                 let commands = commands.clone();
+                let role_clone = Arc::clone(&role);
                 thread::spawn(move || {
-                    handle_incoming_connection(stream, commands, storage_clone);
+                    handle_incoming_connection(stream, commands, storage_clone, role_clone);
                 });
             }
             Err(e) => {
@@ -74,6 +82,7 @@ fn handle_incoming_connection(
     mut stream: TcpStream,
     commands: HashMap<&str, CommandCallback>,
     storage: Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+    role: Arc<ServerRole>,
 ) {
     println!("accepted new connection");
 
@@ -95,7 +104,7 @@ fn handle_incoming_connection(
         print!("Received: {:?}", parts);
 
         if let Some(callback) = commands.get(parts[2]) {
-            let response = callback(&parts, &storage);
+            let response = callback(&parts, &storage, &role);
             if let Err(_) = stream.write(response.as_bytes()) {
                 println!("Error writing to stream");
                 break;
