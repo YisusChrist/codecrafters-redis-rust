@@ -23,6 +23,8 @@ fn main() {
             Arg::with_name("replicaof")
                 .long("replicaof")
                 .takes_value(true)
+                .number_of_values(2)
+                .value_names(&["host", "port"])
                 .help("Sets the master server's host and port"),
         )
         .get_matches();
