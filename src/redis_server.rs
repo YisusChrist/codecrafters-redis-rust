@@ -89,10 +89,9 @@ fn handle_incoming_connection(
     // Send PING command to master server
     let server_role = role.as_ref();
     if let ServerRole::Replica { .. } = server_role {
-        println!("Sending PING to master server");
-        // Replica-specific handshake
-        if let Err(_) = stream.write(b"*1\r\n$4\r\nping\r\n") {
-            println!("Error writing PING to stream");
+        let ping = "*1\r\n$4\r\nPING\r\n";
+        if let Err(_) = stream.write(ping.as_bytes()) {
+            println!("Error writing to stream");
             return;
         }
     }
