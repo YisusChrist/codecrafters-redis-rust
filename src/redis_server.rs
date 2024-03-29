@@ -86,16 +86,6 @@ fn handle_incoming_connection(
 ) {
     println!("accepted new connection");
 
-    // Send PING command to master server
-    let server_role = role.as_ref();
-    if let ServerRole::Replica { .. } = server_role {
-        // Replica-specific handshake
-        if let Err(_) = stream.write(b"*1\r\n$4\r\nping\r\n") {
-            println!("Error writing PING to stream");
-            return;
-        }
-    }
-
     let mut buf = [0; 1024];
     loop {
         let n = match stream.read(&mut buf) {
