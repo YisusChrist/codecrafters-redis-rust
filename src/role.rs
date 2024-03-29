@@ -11,7 +11,7 @@ pub enum ServerRole {
 pub fn get_role(matches: ArgMatches) -> ServerRole {
     match matches.value_of("replicaof") {
         Some(master) => {
-            let parts: Vec<&str> = master.split(':').collect();
+            let parts: Vec<&str> = master.split(' ').collect();
             if parts.len() != 2 {
                 panic!("Invalid replicaof argument. Use format: host:port");
             }
