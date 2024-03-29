@@ -82,7 +82,7 @@ pub fn info_command(
 ) -> String {
     // Replication section of the INFO command
     // For now, only support the role key
-    if parts.len() >= 4 && parts[3] == "replication" {
+    if parts[4] == "replication" {
         let role = "master"; // Assuming this server is always the master
         format!("$11\r\nrole:{}\r\n", role)
     } else {
