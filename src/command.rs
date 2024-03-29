@@ -97,7 +97,8 @@ fn info_command(
             ServerRole::Master => "master",
             ServerRole::Replica { .. } => "slave",
         };
-        format!("${}\r\nrole:{}\r\n", role.len(), role)
+        let message = format!("role:{}\r\n", role);
+        format!("${}\r\n{}\r\n", message.len(), message)
     } else {
         "-ERR wrong number of arguments for 'info' command\r\n".to_string()
     }
