@@ -109,7 +109,7 @@ fn info_command(
         ];
 
         let message = data.join("\r\n");
-        let total_len = data.iter().map(|x| x.len()).sum::<usize>() + data.len() - 1;
+        let total_len = data.iter().map(|x| x.len()).sum::<usize>();
 
         println!("total_len: {}", total_len);
         println!("message: {}", message);
