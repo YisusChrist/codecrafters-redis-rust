@@ -65,6 +65,11 @@ event loops, the Redis protocol and more.
       - [The replication ID and offset](#the-replication-id-and-offset)
       - [Tests](#tests-10)
       - [Notes](#notes-10)
+    - [Stage 12: Send handshake (1/3)](#stage-12-send-handshake-13)
+      - [Your Task](#your-task-11)
+      - [Handshake](#handshake)
+      - [Tests](#tests-11)
+      - [Notes](#notes-11)
 
 # Introduction
 
@@ -571,3 +576,35 @@ Your program should respond with a [Bulk string](https://redis.io/docs/reference
 #### Notes
 
 - Your code should still pass the previous stage tests, so the `role` key still needs to be returned
+
+### Stage 12: Send handshake (1/3)
+
+#### Your Task
+
+In this stage, you'll implement part 1 of the handshake that happens when a replica connects to master.
+
+#### Handshake
+
+When a replica connects to a master, it needs to go through a handshake process before receiving updates from the master.
+
+There are three parts to this handshake:
+
+- The replica sends a `PING` to the master (**This stage**)
+- The replica sends `REPLCONF` twice to the master (Next stages)
+- The replica sends `PSYNC` to the master (Next stages)
+
+We'll learn more about `REPLCONF` and `PSYNC` in later stages. For now, we'll focus on the first part of the handshake: sending `PING` to the master.
+
+#### Tests
+
+The tester will execute your program like this:
+
+```bash
+./spawn_redis_server.sh --port <PORT> --replicaof <MASTER_HOST> <MASTER_PORT>
+```
+
+It'll then assert that the replica connects to the master and sends the `PING` command.
+
+#### Notes
+
+- The `PING` command should be sent as a RESP Array, like this : `*1\r\n$4\r\nping\r\n`
