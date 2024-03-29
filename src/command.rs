@@ -97,17 +97,30 @@ fn info_command(
             ServerRole::Master => "master",
             ServerRole::Replica { .. } => "slave",
         };
-        let message = format!("role:{}\r\n", role);
+        let message = ;
 
         // Hardcoded replication ID
         let master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
         let master_repl_offset = 0;
         let total_len = message.len() + master_replid.len() + 14 + 19;
 
-        format!(
-            "${}\r\n{}\r\nmaster_replid:{}\r\nmaster_repl_offset:{}\r\n",
-            total_len, message, master_replid, master_repl_offset
-        )
+        let data = [
+            format!("role:{}", role),
+            format!("master_replid:{}", master_replid),
+            format!("master_repl_offset:{}", master_repl_offset),
+        ];
+
+        let message = data.join("\r\n");
+        let total_len = loop {
+            let len = message.len() + master_replid.len() + 14 + 19;
+            if len == total_len {
+                break len;
+            }
+        };
+        println!("total_len: {}", total_len);
+        println!("message: {}", message);
+
+        format!("${}\r\n{}\r\n", total_len, message)
     } else {
         "-ERR wrong number of arguments for 'info' command\r\n".to_string()
     }
