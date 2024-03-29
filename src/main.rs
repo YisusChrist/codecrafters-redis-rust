@@ -37,7 +37,7 @@ fn main() {
     commands.insert("echo", echo_command);
     commands.insert("set", set_command);
     commands.insert("get", get_command);
-    commands.insert("info", info_command);
+    commands.insert("INFO", info_command);
 
     for stream in listener.incoming() {
         match stream {
