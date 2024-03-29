@@ -101,8 +101,6 @@ fn handle_incoming_connection(
             continue;
         }
 
-        print!("Received: {:?}", parts);
-
         if let Some(callback) = commands.get(parts[2]) {
             let response = callback(&parts, &storage, &role);
             if let Err(_) = stream.write(response.as_bytes()) {
