@@ -103,12 +103,12 @@ fn info_command(
         let master_repl_offset = 0;
 
         let data = [
-            format!("role:{}", role),
-            format!("master_replid:{}", master_replid),
-            format!("master_repl_offset:{}", master_repl_offset),
+            format!("role:{}\r\n", role),
+            format!("master_replid:{}\r\n", master_replid),
+            format!("master_repl_offset:{}\r\n", master_repl_offset),
         ];
 
-        let message = data.join("\r\n");
+        let message = data.join("");
         let total_len = data.iter().map(|x| x.len()).sum::<usize>();
 
         println!("total_len: {}", total_len);
