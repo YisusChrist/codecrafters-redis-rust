@@ -75,3 +75,17 @@ pub fn get_command(
         "-ERR wrong number of arguments for 'get' command\r\n".to_string()
     }
 }
+
+pub fn info_command(
+    parts: &[&str],
+    _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+) -> String {
+    // Replication section of the INFO command
+    // For now, only support the role key
+    if parts.len() >= 4 && parts[3] == "replication" {
+        let role = "master"; // Assuming this server is always the master
+        format!("$11\r\nrole:{}\r\n", role)
+    } else {
+        "-ERR wrong number of arguments for 'info' command\r\n".to_string()
+    }
+}
