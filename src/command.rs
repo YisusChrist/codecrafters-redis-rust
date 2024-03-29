@@ -6,18 +6,18 @@ use std::time::SystemTime;
 pub type CommandCallback =
     fn(&[&str], &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String;
 
-pub fn ping_command(_: &[&str], _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String {
+fn ping_command(_: &[&str], _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>) -> String {
     "+PONG\r\n".to_string()
 }
 
-pub fn echo_command(
+fn echo_command(
     parts: &[&str],
     _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
 ) -> String {
     format!("{}\r\n{}\r\n", parts[3], parts[4])
 }
 
-pub fn set_command(
+fn set_command(
     parts: &[&str],
     storage: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
 ) -> String {
@@ -52,7 +52,7 @@ pub fn set_command(
     }
 }
 
-pub fn get_command(
+fn get_command(
     parts: &[&str],
     storage: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
 ) -> String {
@@ -76,7 +76,7 @@ pub fn get_command(
     }
 }
 
-pub fn info_command(
+fn info_command(
     parts: &[&str],
     _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
 ) -> String {
@@ -88,4 +88,14 @@ pub fn info_command(
     } else {
         "-ERR wrong number of arguments for 'info' command\r\n".to_string()
     }
+}
+
+pub fn get_commands() -> HashMap<&'static str, CommandCallback> {
+    let mut commands: HashMap<&str, CommandCallback> = HashMap::new();
+    commands.insert("ping", ping_command);
+    commands.insert("echo", echo_command);
+    commands.insert("set", set_command);
+    commands.insert("get", get_command);
+    commands.insert("INFO", info_command);
+    commands
 }

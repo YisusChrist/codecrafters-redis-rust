@@ -50,6 +50,16 @@ event loops, the Redis protocol and more.
       - [Your Task](#your-task-7)
       - [Tests](#tests-7)
       - [Notes](#notes-7)
+    - [Stage 9: The INFO command](#stage-9-the-info-command)
+      - [Your Task](#your-task-8)
+      - [The replication section](#the-replication-section)
+      - [Tests](#tests-8)
+      - [Notes](#notes-8)
+    - [Stage 10: The INFO command on a replica](#stage-10-the-info-command-on-a-replica)
+      - [Your Task](#your-task-9)
+      - [The `--replicaof` flag](#the---replicaof-flag)
+      - [Tests](#tests-9)
+      - [Notes](#notes-9)
 
 # Introduction
 
@@ -409,3 +419,106 @@ It'll then try to connect to your TCP server on the specified port number (`6380
 - Your program still needs to pass the previous stages, so if `--port` isn't specified, you should default to port 6379.
 - The tester will pass a random port number to your program, so you can't hardcode the port number from the example above.
 - If your repository was created before 5th Oct 2023, it's possible that your `./spawn_redis_server.sh` script might not be passing arguments on to your program. You'll need to edit `./spawn_redis_server.sh` to fix this, check [this PR](https://github.com/codecrafters-io/build-your-own-redis/pull/89/files) for details.
+
+### Stage 9: The INFO command
+
+#### Your Task
+
+In this stage, you'll add support for the [INFO](https://redis.io/commands/info/) command.
+
+The `INFO` command returns information and statistics about a Redis server. In this stage, we'll add support for the `replication` section of the `INFO` command.
+
+#### The replication section
+
+When you run the `INFO` command against a Redis server, you'll see something like this:
+
+```bash
+$ redis-cli info replication
+# Replication
+role:master
+connected_slaves:0
+master_replid:8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb
+master_repl_offset:0
+second_repl_offset:-1
+repl_backlog_active:0
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:0
+repl_backlog_histlen:
+```
+
+The reply to this command is a [Bulk string](https://redis.io/docs/reference/protocol-spec/#bulk-strings) where each line is a key value pair, separated by ":".
+
+Here are what some of the important fields mean:
+
+- `role`: The role of the server (`master` or `slave`)
+- `connected_slaves`: The number of connected replicas
+- `master_replid`: The replication ID of the master (we'll get to this in later stages)
+- `master_repl_offset`: The replication offset of the master (we'll get to this in later stages)
+
+In this stage, you'll only need to support the `role` key. We'll add support for other keys in later stages.
+
+#### Tests
+
+The tester will execute your program like this:
+
+```bash
+./spawn_redis_server.sh --port <PORT>
+```
+
+It'll then send the `INFO` command with `replication` as an argument.
+
+```bash
+$ redis-cli -p <PORT> info replication
+```
+
+Your program should respond with a [Bulk string](https://redis.io/docs/reference/protocol-spec/#bulk-strings) where each line is a key value pair separated by `:`. The tester will only look for the `role` key, and assert that the value is `master`.
+
+#### Notes
+
+- In the response for the `INFO` command, you only need to support the `role` key for this stage. We'll add support for the other keys in later stages.
+- The `# Replication` heading in the response is optional, you can ignore it.
+- The response to `INFO` needs to be encoded as a [Bulk string](https://redis.io/docs/reference/protocol-spec/#bulk-strings).
+  - An example valid response would be `$11\r\nrole:master\r\n` (the string `role:master` encoded as a [Bulk string](https://redis.io/docs/reference/protocol-spec/#bulk-strings))
+- The `INFO` command can be used without any arguments, in which case it returns all sections available. In this stage, we'll always send `replication` as an argument to the `INFO` command, so you only need to support the `replication` section.
+
+### Stage 10: The INFO command on a replica
+
+#### Your Task
+
+In this stage, you'll extend your [INFO](https://redis.io/commands/info/) command to run on a replica.
+
+#### The `--replicaof` flag
+
+By default, a Redis server assumes the "master" role. When the `--replicaof` flag is passed, the server assumes the "slave" role instead.
+
+Here's an example usage of the `--replicaof` flag:
+
+```bash
+./spawn_redis_server.sh --port 6380 --replicaof localhost 6379
+```
+
+In this example, we're starting a Redis server in replica mode. The server itself will listen for connections on port 6380, but it'll also connect to a master (another Redis server) running on localhost port 6379 and replicate all changes from the master.
+
+We'll learn more about how this replication works in later stages. For now, we'll focus on adding support for the `--replicaof` flag, and extending the `INFO` command to support returning `role: slave` when the server is a replica.
+
+#### Tests
+
+The tester will execute your program like this:
+
+```bash
+./spawn_redis_server.sh --port <PORT> --replicaof <MASTER_HOST> <MASTER_PORT>
+```
+
+It'll then send the `INFO` command with `replication` as an argument to your server.
+
+```bash
+$ redis-cli -p <PORT> info replication
+```
+
+Your program should respond with a [Bulk string](https://redis.io/docs/reference/protocol-spec/#bulk-strings) where each line is a key value pair separated by `:`. The tester will only look for the `role` key, and assert that the value is `slave`.
+
+#### Notes
+
+- Your program still needs to pass the previous stage tests, so if `--replicaof` isn't specified, you should default to the `master` role.
+- Just like the last stage, you only need to support the `role` key in the response for this stage. We'll add support for the other keys in later stages.
+- You don't need to actually connect to the master server specified via `--replicaof` in this stage. We'll get to that in later stages.
