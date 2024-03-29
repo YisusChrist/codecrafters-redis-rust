@@ -15,35 +15,41 @@ event loops, the Redis protocol and more.
 - [Passing the first stage](#passing-the-first-stage)
 - [Stage 2 \& beyond](#stage-2--beyond)
 - [Functionalities implemented for each stage](#functionalities-implemented-for-each-stage)
-  - [Stage 1: Bind to a port](#stage-1-bind-to-a-port)
-    - [Your Task](#your-task)
-    - [Tests](#tests)
-    - [Notes](#notes)
-  - [Stage 2: Respond to PING](#stage-2-respond-to-ping)
-    - [Prerequisites](#prerequisites)
-    - [Your Task](#your-task-1)
-    - [Tests](#tests-1)
-    - [Notes](#notes-1)
-  - [Stage 3: Respond to multiple PINGs](#stage-3-respond-to-multiple-pings)
-    - [Your Task](#your-task-2)
-    - [Tests](#tests-2)
-    - [Notes](#notes-2)
-  - [Stage 4: Handle concurrent clients](#stage-4-handle-concurrent-clients)
-    - [Your Task](#your-task-3)
-    - [Tests](#tests-3)
-    - [Notes](#notes-3)
-  - [Stage 5: Implement the ECHO command](#stage-5-implement-the-echo-command)
-    - [Your Task](#your-task-4)
-    - [Tests](#tests-4)
-    - [Notes](#notes-4)
-  - [Stage 6: Implement the SET \& GET commands](#stage-6-implement-the-set--get-commands)
-    - [Your Task](#your-task-5)
-    - [Tests](#tests-5)
-    - [Notes](#notes-5)
-  - [Stage 7: Expiry](#stage-7-expiry)
-    - [Your Task](#your-task-6)
-    - [Tests](#tests-6)
-    - [Notes](#notes-6)
+  - [Basic functionality](#basic-functionality)
+    - [Stage 1: Bind to a port](#stage-1-bind-to-a-port)
+      - [Your Task](#your-task)
+      - [Tests](#tests)
+      - [Notes](#notes)
+    - [Stage 2: Respond to PING](#stage-2-respond-to-ping)
+      - [Prerequisites](#prerequisites)
+      - [Your Task](#your-task-1)
+      - [Tests](#tests-1)
+      - [Notes](#notes-1)
+    - [Stage 3: Respond to multiple PINGs](#stage-3-respond-to-multiple-pings)
+      - [Your Task](#your-task-2)
+      - [Tests](#tests-2)
+      - [Notes](#notes-2)
+    - [Stage 4: Handle concurrent clients](#stage-4-handle-concurrent-clients)
+      - [Your Task](#your-task-3)
+      - [Tests](#tests-3)
+      - [Notes](#notes-3)
+    - [Stage 5: Implement the ECHO command](#stage-5-implement-the-echo-command)
+      - [Your Task](#your-task-4)
+      - [Tests](#tests-4)
+      - [Notes](#notes-4)
+    - [Stage 6: Implement the SET \& GET commands](#stage-6-implement-the-set--get-commands)
+      - [Your Task](#your-task-5)
+      - [Tests](#tests-5)
+      - [Notes](#notes-5)
+    - [Stage 7: Expiry](#stage-7-expiry)
+      - [Your Task](#your-task-6)
+      - [Tests](#tests-6)
+      - [Notes](#notes-6)
+  - [Replication](#replication)
+    - [Stage 8: Configure listening port](#stage-8-configure-listening-port)
+      - [Your Task](#your-task-7)
+      - [Tests](#tests-7)
+      - [Notes](#notes-7)
 
 # Introduction
 
@@ -97,11 +103,13 @@ Note: This section is for stages 2 and beyond.
 
 # Functionalities implemented for each stage
 
+## Basic functionality
+
 Here are the functionalities that you'll need to implement for each stage:
 
-## Stage 1: Bind to a port
+### Stage 1: Bind to a port
 
-### Your Task
+#### Your Task
 
 In this stage, you'll implement a TCP server that listens on port 6379.
 
@@ -109,7 +117,7 @@ In this stage, you'll implement a TCP server that listens on port 6379.
 
 Don't worry if you're unfamiliar with the TCP protocol, or what Redis clients & servers are. You'll learn more about this in the next stages.
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -119,14 +127,14 @@ $ ./spawn_redis_server.sh
 
 It'll then try to connect to your TCP server on port 6379. If the connection succeeds, you'll pass this stage.
 
-### Notes
+#### Notes
 
 - 6379 is the default port that Redis uses.
 - If you already have a Redis server running on your machine and listening on port 6379, you'll see a "port already in use" error when running your code. Try stopping the existing Redis server and running your code again.
 
-## Stage 2: Respond to PING
+### Stage 2: Respond to PING
 
-### Prerequisites
+#### Prerequisites
 
 Before attempting this stage, we recommend familiarizing yourself with:
 
@@ -139,7 +147,7 @@ Our interactive concepts can help with this:
 - [TCP: An Overview](https://app.codecrafters.io/concepts/tcp-overview) — Learn about the TCP protocol and how it works
 - [TCP Servers in Rust](https://app.codecrafters.io/concepts/rust-tcp-server) — Learn how to write TCP servers using Rust's std::net module
 
-### Your Task
+#### Your Task
 
 In this stage, you'll implement support for the [PING](https://redis.io/commands/ping) command.
 
@@ -151,7 +159,7 @@ The response for the `PING` command is `+PONG\r\n`. This is the string "PONG" en
 
 In this stage, we'll cut corners by ignoring client input and hardcoding `+PONG\r\n` as a response. We'll learn to parse client input in later stages.
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -167,21 +175,21 @@ $ redis-cli ping
 
 Your server should respond with `+PONG\r\n`, which is "PONG" encoded as a [RESP simple string](https://redis.io/docs/reference/protocol-spec/#resp-simple-strings).
 
-### Notes
+#### Notes
 
 - You can ignore the data that the tester sends you for this stage. We'll get to parsing client input in later stages. For now, you can just hardcode `+PONG\r\n` as the response.
 - You can also ignore handling multiple clients and handling multiple PING commands in the stage, we'll get to that in later stages.
 - The exact bytes your program will receive won't be just `ping`, you'll receive something like this: `\*1\r\n$4\r\nping\r\n`, which is the Redis protocol encoding of the `PING` command. We'll learn more about this in later stages.
 
-## Stage 3: Respond to multiple PINGs
+### Stage 3: Respond to multiple PINGs
 
-### Your Task
+#### Your Task
 
 In this stage, you'll respond to multiple [PING](https://redis.io/commands/ping) commands sent by the same connection.
 
 A Redis server starts to listen for the next command as soon as it's done responding to the previous one. This allows Redis clients to send multiple commands using the same connection.
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -199,14 +207,14 @@ The tester will expect to receive two `+PONG\r\n` responses.
 
 You'll need to run a loop that reads input from a connection and sends a response back.
 
-### Notes
+#### Notes
 
 - Just like the previous stage, you can hardcode `+PONG\r\n` as the response for this stage. We'll get to parsing client input in later stages.
 - The two PING commands will be sent using the same connection. We'll get to handling multiple connections in later stages.
 
-## Stage 4: Handle concurrent clients
+### Stage 4: Handle concurrent clients
 
-### Your Task
+#### Your Task
 
 In this stage, you'll add support for multiple concurrent clients.
 
@@ -214,7 +222,7 @@ In addition to handling multiple commands from the same client, Redis servers ar
 
 To implement this, you'll need to either use threads, or, if you're feeling adventurous, an [Event Loop](https://en.wikipedia.org/wiki/Event_loop) (like the official Redis implementation does).
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -225,33 +233,33 @@ $ ./spawn_redis_server.sh
 It'll then send two PING commands concurrently using two different connections:
 
 ```bash
-# These two will be sent concurrently so that we test your server's ability to handle concurrent clients.
+## These two will be sent concurrently so that we test your server's ability to handle concurrent clients.
 $ redis-cli ping
 $ redis-cli ping
 ```
 
 The tester will expect to receive two `+PONG\r\n` responses.
 
-### Notes
+#### Notes
 
 - Since the tester client _only_ sends the PING command at the moment, it's okay to ignore what the client sends and hardcode a response. We'll get to parsing client input in later stages.
 
-## Stage 5: Implement the ECHO command
+### Stage 5: Implement the ECHO command
 
-### Your Task
+#### Your Task
 
 In this stage, you'll add support for the [ECHO](https://redis.io/commands/echo) command.
 
 `ECHO` is a command like `PING` that's used for testing and debugging. It accepts a single argument and returns it back as a RESP bulk string.
 
 ```bash
-$ redis-cli ping # The command you implemented in previous stages
+$ redis-cli ping ## The command you implemented in previous stages
 PONG
-$ redis-cli echo hey # The command you'll implement in this stage
+$ redis-cli echo hey ## The command you'll implement in this stage
 hey
 ```
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -267,7 +275,7 @@ $ redis-cli echo hey
 
 The tester will expect to receive `$3\r\nhey\r\n` as a response (that's the string `hey` encoded as a [RESP bulk string](https://redis.io/docs/reference/protocol-spec/#bulk-strings).
 
-### Notes
+#### Notes
 
 - We suggest that you implement a proper Redis protocol parser in this stage. It'll come in handy in later stages.
 - Redis command names are case-insensitive, so `ECHO`, `echo` and `EcHo` are all valid commands.
@@ -275,9 +283,9 @@ The tester will expect to receive `$3\r\nhey\r\n` as a response (that's the stri
 - The exact bytes your program will receive won't be just `echo hey`, you'll receive something like this: `*2\r\n$4\r\necho\r\n$3\r\nhey\r\n`. That's `["echo", "hey"]` encoded using the [Redis protocol](https://redis.io/docs/reference/protocol-spec/).
 - You can read more about how "commands" are handled in the Redis protocol [here](https://redis.io/docs/reference/protocol-spec/#sending-commands-to-a-redis-server).
 
-## Stage 6: Implement the SET & GET commands
+### Stage 6: Implement the SET & GET commands
 
-### Your Task
+#### Your Task
 
 In this stage, you'll add support for the [SET](https://redis.io/commands/set) & [GET](https://redis.io/commands/get) commands.
 
@@ -292,7 +300,7 @@ bar
 
 The `SET` command supports a number of extra options like `EX` (expiry time in seconds), `PX` (expiry time in milliseconds) and more. We won't cover these extra options in this stage. We'll get to them in later stages.
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -316,28 +324,28 @@ $ redis-cli get foo
 
 The tester will expect to receive `$3\r\nbar\r\n` as a response (that's the string `bar` encoded as a [RESP bulk string](https://redis.io/docs/reference/protocol-spec/#bulk-strings).
 
-### Notes
+#### Notes
 
 - If you implemented a proper Redis protocol parser in the previous stage, you should be able to reuse it in this stage.
 - Just like the previous stage, the values used for keys and values will be random, so you won't be able to hardcode the response to pass this stage.
 - If a key doesn't exist, the `GET` command should return a "null bulk string" (`$-1\r\n`). We won't explicitly test this in this stage, but you'll need it for the next stage (expiry).
 
-## Stage 7: Expiry
+### Stage 7: Expiry
 
-### Your Task
+#### Your Task
 
 In this stage, you'll add support for setting a key with an expiry.
 
 The expiry for a key can be provided using the "PX" argument to the [SET](https://redis.io/commands/set) command. The expiry is provided in milliseconds.
 
 ```bash
-$ redis-cli set foo bar px 100 # Sets the key "foo" to "bar" with an expiry of 100 milliseconds
+$ redis-cli set foo bar px 100 ## Sets the key "foo" to "bar" with an expiry of 100 milliseconds
 OK
 ```
 
 After the key has expired, a `GET` command for that key should return a "null bulk string" (`$-1\r\n`).
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -367,7 +375,37 @@ $ sleep 0.2 && redis-cli get foo
 
 It'll expect the response to be `$-1\r\n` (a "null bulk string").
 
-### Notes
+#### Notes
 
 - Just like command names, command arguments are also case-insensitive. So `PX`, `px` and `pX` are all valid.
 - The keys, values and expiry times used in the tests will be random, so you won't be able to hardcode a response to pass this stage.
+
+## Replication
+
+### Stage 8: Configure listening port
+
+#### Your Task
+
+Welcome to the Replication extension!
+
+In this extension, you'll extend your Redis server to support [leader-follower replication](https://redis.io/docs/management/replication/). You'll be able to run multiple Redis servers with one acting as the "master" and the others as "replicas". Changes made to the master will be automatically replicated to replicas.
+
+Since we'll need to run multiple instances of your Redis server at once, we can't run all of them on port 6379.
+
+In this stage, you'll add support for starting the Redis server on a custom port. The port number will be passed to your program via the `--port` flag.
+
+#### Tests
+
+The tester will execute your program like this:
+
+```bash
+./spawn_redis_server.sh --port 6380
+```
+
+It'll then try to connect to your TCP server on the specified port number (`6380` in the example above). If the connection succeeds, you'll pass this stage.
+
+#### Notes
+
+- Your program still needs to pass the previous stages, so if `--port` isn't specified, you should default to port 6379.
+- The tester will pass a random port number to your program, so you can't hardcode the port number from the example above.
+- If your repository was created before 5th Oct 2023, it's possible that your `./spawn_redis_server.sh` script might not be passing arguments on to your program. You'll need to edit `./spawn_redis_server.sh` to fix this, check [this PR](https://github.com/codecrafters-io/build-your-own-redis/pull/89/files) for details.
