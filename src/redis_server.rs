@@ -10,10 +10,16 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::SystemTime;
 
+// Define a struct to hold replica connections
+struct ReplicaConnection {
+    stream: TcpStream,
+}
+
 pub fn start_master_server(port: u16) {
     // Initialize storage, commands, etc.
     let storage = Arc::new(Mutex::new(HashMap::new())); // Shared storage wrapped in Mutex and Arc
     let commands = get_commands();
+    let replicas = Arc::new(Mutex::new(Vec::<ReplicaConnection>::new())); // Vector to hold connected replicas
 
     // Start TCP listener
     let addr = format!("127.0.0.1:{}", port);
@@ -22,7 +28,7 @@ pub fn start_master_server(port: u16) {
 
     let role = Arc::new(ServerRole::Master);
     // Accept and handle incoming connections
-    accept_connections(listener, storage, commands, role);
+    accept_connections(listener, storage, commands, role, replicas);
 }
 
 pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
@@ -54,8 +60,10 @@ pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
         master_port,
     });
 
+    let replicas = Arc::new(Mutex::new(Vec::<ReplicaConnection>::new())); // Vector to hold connected replicas
+
     // Accept and handle incoming connections
-    accept_connections(listener, storage, commands, role);
+    accept_connections(listener, storage, commands, role, replicas);
 }
 
 fn accept_connections(
@@ -63,6 +71,7 @@ fn accept_connections(
     storage: Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
     commands: HashMap<String, CommandCallback>,
     role: Arc<ServerRole>,
+    replicas: Arc<Mutex<Vec<ReplicaConnection>>>,
 ) {
     for stream in listener.incoming() {
         match stream {
@@ -70,8 +79,15 @@ fn accept_connections(
                 let storage_clone = Arc::clone(&storage); // Clone the Arc for each thread
                 let commands = commands.clone();
                 let role_clone = Arc::clone(&role);
+                let replicas_clone = Arc::clone(&replicas);
                 thread::spawn(move || {
-                    handle_incoming_connection(stream, commands, storage_clone, role_clone);
+                    handle_incoming_connection(
+                        stream,
+                        commands,
+                        storage_clone,
+                        role_clone,
+                        replicas_clone,
+                    );
                 });
             }
             Err(e) => {
@@ -87,6 +103,7 @@ fn handle_incoming_connection(
     commands: HashMap<String, CommandCallback>,
     storage: Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
     role: Arc<ServerRole>,
+    replicas: Arc<Mutex<Vec<ReplicaConnection>>>,
 ) {
     println!("accepted new connection");
 
@@ -116,6 +133,19 @@ fn handle_incoming_connection(
             }
             if response.starts_with("+FULLRESYNC") {
                 send_empty_rdb_file(&mut stream);
+                // Add the newly connected replica to the list of replicas
+                let mut replicas = replicas.lock().unwrap();
+                replicas.push(ReplicaConnection {
+                    stream: stream.try_clone().unwrap(),
+                });
+                println!("Replica connected");
+                print!("Replicas: ");
+                for replica in replicas.iter() {
+                    print!("{:?} ", replica.stream.peer_addr());
+                }
+            }
+            if is_write_command(&command) {
+                propagate_command_to_replica(&parts, &replicas);
             }
         } else {
             let response = "Invalid command".to_string();
@@ -186,5 +216,36 @@ fn send_empty_rdb_file(stream: &mut TcpStream) {
     }
     if let Err(_) = stream.write(&rdb_binary) {
         println!("Error writing RDB file to stream");
+    }
+}
+
+fn is_write_command(command: &str) -> bool {
+    // Define write commands here
+    let write_commands = vec!["set", "del"]; // Add more write commands if needed
+    write_commands.contains(&command)
+}
+
+fn propagate_command_to_replica(parts: &[&str], replicas: &Arc<Mutex<Vec<ReplicaConnection>>>) {
+    // Prepare command for propagation
+    let command_array = parts
+        .iter()
+        .map(|&part| format!("${}\r\n{}\r\n", part.len(), part))
+        .collect::<Vec<String>>();
+    let command_length = command_array.len();
+    let mut command = format!("*{}\r\n", command_length);
+    for item in command_array {
+        command.push_str(&item);
+    }
+
+    // Send command to each replica
+    let replicas = replicas.lock().unwrap();
+    for replica in replicas.iter() {
+        let mut stream = &replica.stream;
+        match stream.write(command.as_bytes()) {
+            Ok(_) => {}
+            Err(_) => {
+                println!("Error propagating command to replica");
+            }
+        }
     }
 }
