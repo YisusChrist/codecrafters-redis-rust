@@ -31,7 +31,14 @@ pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
     // Connect to master server
     let master_addr = format!("{}:{}", master_host, master_port);
     match TcpStream::connect(master_addr) {
-        Ok(stream) => stream,
+        Ok(mut stream) => {
+            // Send PING command to master server
+            let ping = "*1\r\n$4\r\nPING\r\n".to_string();
+            if let Err(_) = stream.write(ping.as_bytes()) {
+                println!("Error writing to stream");
+            }
+            stream
+        }
         Err(e) => {
             println!("Failed to connect to master server: {}", e);
             return;
@@ -50,6 +57,7 @@ pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
         master_host,
         master_port,
     });
+
     // Accept and handle incoming connections
     accept_connections(listener, storage, commands, role);
 }
@@ -86,16 +94,6 @@ fn handle_incoming_connection(
 ) {
     println!("accepted new connection");
 
-    // Send PING command to master server
-    let server_role = role.as_ref();
-    if let ServerRole::Replica { .. } = server_role {
-        let ping = "*1\r\n$4\r\nPING\r\n";
-        if let Err(_) = stream.write(ping.as_bytes()) {
-            println!("Error writing to stream");
-            return;
-        }
-    }
-
     let mut buf = [0; 1024];
     loop {
         let n = match stream.read(&mut buf) {
@@ -106,6 +104,7 @@ fn handle_incoming_connection(
             }
         };
         let received = String::from_utf8_lossy(&buf[..n]);
+        println!("Received: -{}-", received);
         let parts = received.split("\r\n").collect::<Vec<&str>>();
         if parts.len() == 0 || !(parts[0].starts_with("*")) {
             continue;
