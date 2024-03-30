@@ -59,7 +59,7 @@ pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
 fn accept_connections(
     listener: TcpListener,
     storage: Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
-    commands: HashMap<&'static str, CommandCallback>,
+    commands: HashMap<String, CommandCallback>,
     role: Arc<ServerRole>,
 ) {
     for stream in listener.incoming() {
@@ -82,7 +82,7 @@ fn accept_connections(
 
 fn handle_incoming_connection(
     mut stream: TcpStream,
-    commands: HashMap<&str, CommandCallback>,
+    commands: HashMap<String, CommandCallback>,
     storage: Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
     role: Arc<ServerRole>,
 ) {
@@ -104,7 +104,9 @@ fn handle_incoming_connection(
             continue;
         }
 
-        if let Some(callback) = commands.get(parts[2]) {
+        // Convert the command to lowercase
+        let command = parts[2].to_lowercase();
+        if let Some(callback) = commands.get(&command) {
             let response = callback(&parts, &storage, &role);
             if let Err(_) = stream.write(response.as_bytes()) {
                 println!("Error writing to stream");

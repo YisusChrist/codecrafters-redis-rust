@@ -154,14 +154,14 @@ fn psync_command(
     }
 }
 
-pub fn get_commands() -> HashMap<&'static str, CommandCallback> {
-    let mut commands: HashMap<&str, CommandCallback> = HashMap::new();
-    commands.insert("ping", ping_command);
-    commands.insert("echo", echo_command);
-    commands.insert("set", set_command);
-    commands.insert("get", get_command);
-    commands.insert("INFO", info_command);
-    commands.insert("REPLCONF", replconf_command);
-    commands.insert("PSYNC", psync_command);
+pub fn get_commands() -> HashMap<String, CommandCallback> {
+    let mut commands: HashMap<String, CommandCallback> = HashMap::new();
+    commands.insert("ping".to_string(), ping_command);
+    commands.insert("echo".to_string(), echo_command);
+    commands.insert("set".to_string(), set_command);
+    commands.insert("get".to_string(), get_command);
+    commands.insert("info".to_string(), info_command);
+    commands.insert("replconf".to_string(), replconf_command);
+    commands.insert("psync".to_string(), psync_command);
     commands
 }
