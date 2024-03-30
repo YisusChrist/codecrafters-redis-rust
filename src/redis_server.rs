@@ -122,10 +122,15 @@ fn handle_incoming_connection(
 
 fn handshake(stream: &mut TcpStream) {
     // Send PING command to master server
-    let ping = "*1\r\n$4\r\nPING\r\n".to_string();
+    let ping = "*1\r\n$4\r\nping\r\n".to_string();
     if let Err(_) = stream.write(ping.as_bytes()) {
         println!("Error writing to stream");
     }
+    // Await PONG response
+    let mut buf = [0; 1024];
+    let n = stream.read(&mut buf).unwrap();
+    let received = String::from_utf8_lossy(&buf[..n]);
+    println!("Received: {}", received);
 
     // Send REPLCONF listening-port command
     let listening_port_cmd = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n";
