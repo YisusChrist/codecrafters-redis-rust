@@ -8,6 +8,8 @@ use std::time::SystemTime;
 pub type CommandCallback =
     fn(&[&str], &Arc<Mutex<HashMap<String, (String, SystemTime)>>>, &ServerRole) -> String;
 
+const MASTER_REPLID: &str = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
+
 fn ping_command(
     _: &[&str],
     _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
@@ -98,14 +100,10 @@ fn info_command(
             ServerRole::Replica { .. } => "slave",
         };
 
-        // Hardcoded replication ID
-        let master_replid = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb";
-        let master_repl_offset = 0;
-
         let data = [
             format!("role:{}\r\n", role),
-            format!("master_replid:{}\r\n", master_replid),
-            format!("master_repl_offset:{}\r\n", master_repl_offset),
+            format!("master_replid:{}\r\n", MASTER_REPLID),
+            format!("master_repl_offset:{}\r\n", 0),
         ];
 
         let message = data.join("");
@@ -137,6 +135,25 @@ fn replconf_command(
     }
 }
 
+fn psync_command(
+    parts: &[&str],
+    _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+    _: &ServerRole,
+) -> String {
+    // Check if we have enough parts for PSYNC command
+    if parts.len() >= 4 {
+        if parts[4] == "?" {
+            // Send full synchronization
+            format!("+FULLRESYNC {} {}\r\n", MASTER_REPLID, 0)
+        } else {
+            // Send partial synchronization
+            "+CONTINUE\r\n".to_string()
+        }
+    } else {
+        "-ERR wrong number of arguments for 'psync' command\r\n".to_string()
+    }
+}
+
 pub fn get_commands() -> HashMap<&'static str, CommandCallback> {
     let mut commands: HashMap<&str, CommandCallback> = HashMap::new();
     commands.insert("ping", ping_command);
@@ -145,5 +162,6 @@ pub fn get_commands() -> HashMap<&'static str, CommandCallback> {
     commands.insert("get", get_command);
     commands.insert("INFO", info_command);
     commands.insert("REPLCONF", replconf_command);
+    commands.insert("PSYNC", psync_command);
     commands
 }

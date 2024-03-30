@@ -144,6 +144,14 @@ fn handshake(stream: &mut TcpStream) {
     }
     // Await for OK response
     read_from_stream(stream);
+
+    // Send PSYNC command
+    let psync_cmd = "*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n";
+    if let Err(_) = stream.write(psync_cmd.as_bytes()) {
+        println!("Error writing PSYNC command to stream");
+    }
+    // Await for FULLRESYNC response
+    read_from_stream(stream);
 }
 
 fn read_from_stream(stream: &mut TcpStream) -> String {
