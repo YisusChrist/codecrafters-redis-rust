@@ -32,11 +32,8 @@ pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
     let master_addr = format!("{}:{}", master_host, master_port);
     match TcpStream::connect(master_addr) {
         Ok(mut stream) => {
-            // Send PING command to master server
-            let ping = "*1\r\n$4\r\nPING\r\n".to_string();
-            if let Err(_) = stream.write(ping.as_bytes()) {
-                println!("Error writing to stream");
-            }
+            // Send REPLCONF commands to master
+            handshake(&mut stream);
             stream
         }
         Err(e) => {
@@ -44,9 +41,6 @@ pub fn start_replica_server(port: u16, master_host: String, master_port: u16) {
             return;
         }
     };
-
-    // Send REPLCONF commands to the master
-    // (Optional: implement Redis replication protocol)
 
     // Start TCP listener
     let addr = format!("127.0.0.1:{}", port);
@@ -104,7 +98,7 @@ fn handle_incoming_connection(
             }
         };
         let received = String::from_utf8_lossy(&buf[..n]);
-        println!("Received: -{}-", received);
+        println!("Received: {}", received);
         let parts = received.split("\r\n").collect::<Vec<&str>>();
         if parts.len() == 0 || !(parts[0].starts_with("*")) {
             continue;
@@ -123,5 +117,25 @@ fn handle_incoming_connection(
                 break;
             }
         }
+    }
+}
+
+fn handshake(stream: &mut TcpStream) {
+    // Send PING command to master server
+    let ping = "*1\r\n$4\r\nPING\r\n".to_string();
+    if let Err(_) = stream.write(ping.as_bytes()) {
+        println!("Error writing to stream");
+    }
+
+    // Send REPLCONF listening-port command
+    let listening_port_cmd = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n";
+    if let Err(_) = stream.write(listening_port_cmd.as_bytes()) {
+        println!("Error writing REPLCONF listening-port command to stream");
+    }
+
+    // Send REPLCONF capa psync2 command
+    let capa_cmd = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
+    if let Err(_) = stream.write(capa_cmd.as_bytes()) {
+        println!("Error writing REPLCONF capa psync2 command to stream");
     }
 }
