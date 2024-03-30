@@ -3,6 +3,7 @@ use crate::role::ServerRole;
 
 use hex;
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -145,7 +146,7 @@ fn handle_incoming_connection(
                 }
             }
             if is_write_command(&command) {
-                propagate_command_to_replica(&parts, &replicas);
+                propagate_command_to_replica(received, &replicas);
             }
         } else {
             let response = "Invalid command".to_string();
@@ -225,23 +226,15 @@ fn is_write_command(command: &str) -> bool {
     write_commands.contains(&command)
 }
 
-fn propagate_command_to_replica(parts: &[&str], replicas: &Arc<Mutex<Vec<ReplicaConnection>>>) {
-    // Prepare command for propagation
-    let command_array = parts
-        .iter()
-        .map(|&part| format!("${}\r\n{}\r\n", part.len(), part))
-        .collect::<Vec<String>>();
-    let command_length = command_array.len();
-    let mut command = format!("*{}\r\n", command_length);
-    for item in command_array {
-        command.push_str(&item);
-    }
-
+fn propagate_command_to_replica(
+    received: Cow<'_, str>,
+    replicas: &Arc<Mutex<Vec<ReplicaConnection>>>,
+) {
     // Send command to each replica
     let replicas = replicas.lock().unwrap();
     for replica in replicas.iter() {
         let mut stream = &replica.stream;
-        match stream.write(command.as_bytes()) {
+        match stream.write(received.as_bytes()) {
             Ok(_) => {}
             Err(_) => {
                 println!("Error propagating command to replica");
