@@ -197,7 +197,7 @@ fn read_from_stream(stream: &mut TcpStream) -> String {
     let mut buf = [0; 1024];
     let n = stream.read(&mut buf).unwrap();
     let received = String::from_utf8_lossy(&buf[..n]).to_string();
-    println!("Received: {}", received);
+    //println!("Received: {}", received);
     received
 }
 
