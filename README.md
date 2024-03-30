@@ -84,8 +84,13 @@ event loops, the Redis protocol and more.
       - [Tests](#tests-14)
     - [Stage 16: Receive handshake (2/2)](#stage-16-receive-handshake-22)
       - [Your Task](#your-task-15)
-    - [Handshake (continued from previous stage)](#handshake-continued-from-previous-stage-3)
-    - [Tests](#tests-15)
+      - [Handshake (continued from previous stage)](#handshake-continued-from-previous-stage-3)
+      - [Tests](#tests-15)
+    - [Stage 17: Empty RDB Transfer](#stage-17-empty-rdb-transfer)
+      - [Your Task](#your-task-16)
+      - [Full resynchronization](#full-resynchronization)
+      - [Tests](#tests-16)
+      - [Notes](#notes-12)
 
 # Introduction
 
@@ -774,7 +779,7 @@ It'll then send the following commands:
 
 In this stage, you'll add support for receiving the [`PSYNC`](https://redis.io/commands/psync/) command from the replica.
 
-### Handshake (continued from previous stage)
+#### Handshake (continued from previous stage)
 
 As a recap, there are three parts to the handshake:
 
@@ -804,7 +809,7 @@ The master needs to respond with `+FULLRESYNC <REPL_ID> 0\r\n` ("FULLRESYNC 0" e
   - As an example, you can hardcode `8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb` as the replication ID.
 - `0` is the replication offset of the master. You've already set this in the "Replication ID & Offset" stage.
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -822,3 +827,57 @@ It'll then connect to your TCP server as a replica and execute the following com
 **Notes**:
 
 - In the response, `<REPL_ID>` needs to be replaced with the replication ID of the master which you've initialized in previous stages.
+
+### Stage 17: Empty RDB Transfer
+
+#### Your Task
+
+In this stage, you'll add support for sending an empty RDB file to the replica. This is part of the "full resynchronization" process.
+
+#### Full resynchronization
+
+When a replica connects to a master for the first time, it sends a `PSYNC ? -1` command. This is the replica's way of telling the master that it doesn't have any data yet, and needs to be fully resynchronized.
+
+The master acknowledges this by sending a `FULLRESYNC` response to the replica.
+
+After sending the `FULLRESYNC` response, the master will then send a RDB file of its current state to the replica. The replica is expected to load the file into memory, replacing its current state.
+
+For the purposes of this challenge, you don't have to actually construct an RDB file. We'll assume that the master's database is always empty, and just hardcode an empty RDB file to send to the replica.
+
+You can find the hex representation of an empty RDB file [here](https://github.com/codecrafters-io/redis-tester/blob/main/internal/assets/empty_rdb_hex.md).
+
+The tester will accept any valid RDB file that is empty, you don't need to send the exact file above.
+
+The file is sent using the following format:
+
+```bash
+$<length_of_file>\r\n<contents_of_file>
+```
+
+(This is similar to how [Bulk Strings](https://redis.io/topics/protocol#resp-bulk-strings) are encoded, but without the trailing `\r\n`)
+
+#### Tests
+
+The tester will execute your program like this:
+
+```bash
+./spawn_redis_server.sh --port <PORT>
+```
+
+It'll then connect to your TCP server as a replica and execute the following commands:
+
+1.  `PING` (expecting `+PONG\r\n` back)
+2.  `REPLCONF listening-port <PORT>` (expecting `+OK\r\n` back)
+3.  `REPLCONF capa eof capa psync2` (expecting `+OK\r\n` back)
+4.  `PSYNC ? -1` (expecting `+FULLRESYNC <REPL_ID> 0\r\n` back)
+
+After receiving a response to the last command, the tester will expect to receive an empty RDB file from your server.
+
+#### Notes
+
+- The [RDB file link](https://github.com/codecrafters-io/redis-tester/blob/main/internal/assets/empty_rdb_hex.md) contains hex & base64 representations of the file. You need to decode these into binary contents before sending it to the replica.
+- The RDB file should be sent like this: `$<length>\r\n<contents>`
+  - `<length>` is the length of the file in bytes
+  - `<contents>` is the contents of the file
+  - Note that this is NOT a RESP bulk string, it doesn't contain a `\r\n` at the end
+- If you want to learn more about the RDB file format, read [this blog post](https://rdb.fnordig.de/file_format.html). This challenge has a separate extension dedicated to reading RDB files.

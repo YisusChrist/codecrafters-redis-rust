@@ -1,6 +1,8 @@
 use crate::command::{get_commands, CommandCallback};
 use crate::role::ServerRole;
 
+use hex;
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -112,6 +114,9 @@ fn handle_incoming_connection(
                 println!("Error writing to stream");
                 break;
             }
+            if response.starts_with("+FULLRESYNC") {
+                send_empty_rdb_file(&mut stream);
+            }
         } else {
             let response = "Invalid command".to_string();
             if let Err(_) = stream.write(response.as_bytes()) {
@@ -154,6 +159,8 @@ fn handshake(stream: &mut TcpStream) {
     }
     // Await for FULLRESYNC response
     read_from_stream(stream);
+    // Await for RDB file
+    read_from_stream(stream);
 }
 
 fn read_from_stream(stream: &mut TcpStream) -> String {
@@ -162,4 +169,22 @@ fn read_from_stream(stream: &mut TcpStream) -> String {
     let received = String::from_utf8_lossy(&buf[..n]).to_string();
     println!("Received: {}", received);
     received
+}
+
+fn send_empty_rdb_file(stream: &mut TcpStream) {
+    // Hardcoded empty RDB file in hex format
+    let rdb_hex =
+        "524544495330303131fa0972656469732d76657205372e322e30fa0a72656469732d62697473c040fa056374696d65c26d08bc65fa08757365642d6d656dc2b0c41000fa08616f662d62617365c000fff06e3bfec0ff5aa2".to_string();
+    let rdb_binary = hex::decode(rdb_hex).unwrap();
+    let rdb_length = rdb_binary.len();
+
+    // Send RDB file to the replica
+    let rdb_command = format!("${}\r\n", rdb_length);
+    if let Err(_) = stream.write(rdb_command.as_bytes()) {
+        println!("Error writing RDB file length to stream");
+        return;
+    }
+    if let Err(_) = stream.write(&rdb_binary) {
+        println!("Error writing RDB file to stream");
+    }
 }
