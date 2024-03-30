@@ -117,7 +117,7 @@ fn handle_incoming_connection(
             }
         };
         let received = String::from_utf8_lossy(&buf[..n]);
-        println!("Received: {}", received);
+        //println!("Received: {}", received);
         let parts = received.split("\r\n").collect::<Vec<&str>>();
         if parts.len() == 0 || !(parts[0].starts_with("*")) {
             continue;
