@@ -126,21 +126,30 @@ fn handshake(stream: &mut TcpStream) {
     if let Err(_) = stream.write(ping.as_bytes()) {
         println!("Error writing to stream");
     }
-    // Await PONG response
-    let mut buf = [0; 1024];
-    let n = stream.read(&mut buf).unwrap();
-    let received = String::from_utf8_lossy(&buf[..n]);
-    println!("Received: {}", received);
+    // Await for PONG response
+    read_from_stream(stream);
 
     // Send REPLCONF listening-port command
     let listening_port_cmd = "*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n6380\r\n";
     if let Err(_) = stream.write(listening_port_cmd.as_bytes()) {
         println!("Error writing REPLCONF listening-port command to stream");
     }
+    // Await for OK response
+    read_from_stream(stream);
 
     // Send REPLCONF capa psync2 command
     let capa_cmd = "*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n";
     if let Err(_) = stream.write(capa_cmd.as_bytes()) {
         println!("Error writing REPLCONF capa psync2 command to stream");
     }
+    // Await for OK response
+    read_from_stream(stream);
+}
+
+fn read_from_stream(stream: &mut TcpStream) -> String {
+    let mut buf = [0; 1024];
+    let n = stream.read(&mut buf).unwrap();
+    let received = String::from_utf8_lossy(&buf[..n]).to_string();
+    println!("Received: {}", received);
+    received
 }

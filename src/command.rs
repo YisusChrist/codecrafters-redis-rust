@@ -120,6 +120,23 @@ fn info_command(
     }
 }
 
+fn replconf_command(
+    parts: &[&str],
+    _: &Arc<Mutex<HashMap<String, (String, SystemTime)>>>,
+    _: &ServerRole,
+) -> String {
+    // Check if we have enough parts for REPLCONF command
+    if parts.len() >= 4 {
+        if parts[4] == "listening-port" || parts[4] == "capa" {
+            "+OK\r\n".to_string()
+        } else {
+            "-ERR Unsupported REPLCONF option\r\n".to_string()
+        }
+    } else {
+        "-ERR wrong number of arguments for 'replconf' command\r\n".to_string()
+    }
+}
+
 pub fn get_commands() -> HashMap<&'static str, CommandCallback> {
     let mut commands: HashMap<&str, CommandCallback> = HashMap::new();
     commands.insert("ping", ping_command);
@@ -127,5 +144,6 @@ pub fn get_commands() -> HashMap<&'static str, CommandCallback> {
     commands.insert("set", set_command);
     commands.insert("get", get_command);
     commands.insert("INFO", info_command);
+    commands.insert("REPLCONF", replconf_command);
     commands
 }
