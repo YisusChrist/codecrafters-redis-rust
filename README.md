@@ -97,6 +97,9 @@ event loops, the Redis protocol and more.
       - [Replication connection](#replication-connection)
       - [Tests](#tests-17)
       - [Notes](#notes-13)
+    - [Stage 19: Multi Replica Command Propagation](#stage-19-multi-replica-command-propagation)
+      - [Your Task](#your-task-18)
+    - [Tests](#tests-18)
 
 # Introduction
 
@@ -944,3 +947,36 @@ It'll then assert that these commands were propagated to the replica, in order. 
 #### Notes
 
 - A true implementation would buffer the commands so that they can be sent to the replica after it loads the RDB file. For the purposes of this challenge, you can assume that the replica is ready to receive commands immediately after receiving the RDB file.
+
+### Stage 19: Multi Replica Command Propagation
+
+#### Your Task
+
+In this stage, you'll extend your implementation to support propagating commands to multiple replicas.
+
+### Tests
+
+The tester will execute your program like this:
+
+```bash
+./spawn_redis_server.sh --port <PORT>
+```
+
+It'll then start **multiple** replicas that connect to your server and execute the following commands:
+
+1.  `PING` (expecting `+PONG\r\n` back)
+2.  `REPLCONF listening-port <PORT>` (expecting `+OK\r\n` back)
+3.  `REPLCONF capa psync2` (expecting `+OK\r\n` back)
+4.  `PSYNC ? -1` (expecting `+FULLRESYNC <REPL_ID> 0\r\n` back)
+
+Each replica will expect to receive an RDB file from the master after the handshake is complete.
+
+It'll then send `SET` commands to the master from a client (a separate Redis client, not the replicas).
+
+```bash
+$ redis-cli SET foo 1
+$ redis-cli SET bar 2
+$ redis-cli SET baz 3
+```
+
+It'll then assert that each replica received those commands, in order.
