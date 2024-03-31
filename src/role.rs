@@ -1,5 +1,6 @@
 use clap::ArgMatches;
 
+#[derive(Debug)]
 pub enum ServerRole {
     Master,
     Replica {

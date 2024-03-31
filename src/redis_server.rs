@@ -128,6 +128,14 @@ fn handle_incoming_connection(
         let command = parts[2].to_lowercase();
         if let Some(callback) = commands.get(&command) {
             let response = callback(&parts, &storage, &role);
+            // Send the response only if the role is master
+            //println!("{:?}", role);
+            if let ServerRole::Master = *role {
+                if let Err(_) = stream.write(response.as_bytes()) {
+                    println!("Error writing to stream");
+                    break;
+                }
+            }
             if let Err(_) = stream.write(response.as_bytes()) {
                 println!("Error writing to stream");
                 break;

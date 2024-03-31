@@ -99,7 +99,11 @@ event loops, the Redis protocol and more.
       - [Notes](#notes-13)
     - [Stage 19: Multi Replica Command Propagation](#stage-19-multi-replica-command-propagation)
       - [Your Task](#your-task-18)
-    - [Tests](#tests-18)
+      - [Tests](#tests-18)
+    - [Stage 20: Command Processing](#stage-20-command-processing)
+      - [Your Task](#your-task-19)
+      - [Command processing](#command-processing)
+      - [Tests](#tests-19)
 
 # Introduction
 
@@ -954,7 +958,7 @@ It'll then assert that these commands were propagated to the replica, in order. 
 
 In this stage, you'll extend your implementation to support propagating commands to multiple replicas.
 
-### Tests
+#### Tests
 
 The tester will execute your program like this:
 
@@ -980,3 +984,42 @@ $ redis-cli SET baz 3
 ```
 
 It'll then assert that each replica received those commands, in order.
+
+### Stage 20: Command Processing
+
+#### Your Task
+
+In this stage you'll implement the processing of commands propagated to the replica from the master.
+
+#### Command processing
+
+After the replica receives a command from the master, it processes it and apply it to its own state. This will work exactly like a regular command sent by a client, except that the replica doesn't send a response back to the master.
+
+For example, if the command `set foo 1` is propagated to the replica by a master, the replica must update its database to set the value of `foo` to `1`. Unlike commands from a regular client though, it must not reply with `+OK\r\n`.
+
+#### Tests
+
+THe tester will spawn a Redis master, and it'll then execute your program like this:
+
+```bash
+./spawn_redis_server.sh --port <PORT> --replicaof <MASTER_HOST> <MASTER_PORT>
+```
+
+Just like in the previous stages, your replica should complete the handshake with the master and receive an empty RDB file.
+
+Once the RDB file is received, the master will propagate a series of write commands to your program.
+
+```bash
+set foo 1 # propagated from master to replica
+set bar 2 # propagated from master to replica
+set baz 3 # propagated from master to replica
+
+```
+
+The tester will then issue `get` commands to your program to check if the commands were processed correctly.
+
+```bash
+$ redis-cli GET foo # expecting `1` back
+$ redis-cli GET bar # expecting `2` back
+# ... and so on
+```
