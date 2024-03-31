@@ -136,10 +136,6 @@ fn handle_incoming_connection(
                     break;
                 }
             }
-            if let Err(_) = stream.write(response.as_bytes()) {
-                println!("Error writing to stream");
-                break;
-            }
             if response.starts_with("+FULLRESYNC") {
                 send_empty_rdb_file(&mut stream);
                 // Add the newly connected replica to the list of replicas
