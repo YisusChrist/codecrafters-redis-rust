@@ -200,6 +200,7 @@ fn handshake(stream: &mut TcpStream) {
     read_from_stream(stream);
     // Await for RDB file
     read_from_stream(stream);
+    read_from_stream(stream);
 }
 
 fn read_from_stream(stream: &mut TcpStream) -> String {
@@ -242,9 +243,8 @@ fn propagate_command_to_replica(
     let replicas = replicas.lock().unwrap();
     for replica in replicas.iter() {
         let mut stream = &replica.stream;
-        print!("Propagating command to replica: ");
-        print!("{:?} ", stream.peer_addr());
-        print!("Command: {}", received);
+        println!("Propagating command to replica: {:?}", stream.peer_addr());
+        println!("Command: {}", received);
         match stream.write(received.as_bytes()) {
             Ok(_) => {
                 println!("Command propagated successfully");
