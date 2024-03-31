@@ -125,6 +125,7 @@ fn handle_incoming_connection(
         }
 
         println!("Received: {}", received);
+        println!("Role is {:?}", role);
 
         // Convert the command to lowercase
         let command = parts[2].to_lowercase();
@@ -157,11 +158,14 @@ fn handle_incoming_connection(
                 propagate_command_to_replica(received, &replicas);
             }
         } else {
-            // Process propagated command
-            let mut storage = storage.lock().unwrap();
-            execute_propagated_command(&command, &parts, &mut storage);
+            let response = "Invalid command".to_string();
+            if let Err(_) = stream.write(response.as_bytes()) {
+                println!("Error writing to stream");
+                break;
+            }
         }
     }
+    println!("Connection closed from {:?}", stream.peer_addr());
 }
 
 fn handshake(stream: &mut TcpStream) {
@@ -249,34 +253,6 @@ fn propagate_command_to_replica(
             Err(_) => {
                 println!("Error propagating command to replica");
             }
-        }
-    }
-}
-
-fn execute_propagated_command(
-    command: &str,
-    parts: &[&str],
-    storage: &mut HashMap<String, (String, SystemTime)>,
-) {
-    match command {
-        "set" => {
-            // Execute SET command
-            if parts.len() >= 4 {
-                let key = parts[3].to_string();
-                let value = parts[4].to_string();
-                storage.insert(key, (value, SystemTime::now()));
-            }
-        }
-        "del" => {
-            // Execute DEL command
-            if parts.len() >= 3 {
-                let key = parts[3].to_string();
-                storage.remove(&key);
-            }
-        }
-        _ => {
-            // Ignore other commands
-            println!("Received unhandled propagated command: {}", command);
         }
     }
 }
