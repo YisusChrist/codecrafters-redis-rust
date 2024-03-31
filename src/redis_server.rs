@@ -12,6 +12,7 @@ use std::thread;
 use std::time::SystemTime;
 
 // Define a struct to hold replica connections
+#[derive(Debug)]
 struct ReplicaConnection {
     stream: TcpStream,
 }
@@ -118,19 +119,27 @@ fn handle_incoming_connection(
             }
         };
         let received = String::from_utf8_lossy(&buf[..n]);
-        //println!("Received: {}", received);
         let parts = received.split("\r\n").collect::<Vec<&str>>();
-        if parts.len() == 0 || !(parts[0].starts_with("*")) {
+        if parts.len() < 2 || !(parts[0].starts_with("*")) {
             continue;
         }
+
+        println!("Received: {}", received);
 
         // Convert the command to lowercase
         let command = parts[2].to_lowercase();
         if let Some(callback) = commands.get(&command) {
             let response = callback(&parts, &storage, &role);
-            if let Err(_) = stream.write(response.as_bytes()) {
-                println!("Error writing to stream");
-                break;
+            // Check if the current server is a replica and the command comes from the master
+            if let ServerRole::Replica { .. } = *role {
+                if stream.peer_addr().unwrap().port() == 6380 {
+                    println!("Ignoring command from master");
+                }
+            } else {
+                if let Err(_) = stream.write(response.as_bytes()) {
+                    println!("Error writing to stream");
+                    break;
+                }
             }
             if response.starts_with("+FULLRESYNC") {
                 send_empty_rdb_file(&mut stream);
@@ -140,10 +149,7 @@ fn handle_incoming_connection(
                     stream: stream.try_clone().unwrap(),
                 });
                 println!("Replica connected");
-                print!("Replicas: ");
-                for replica in replicas.iter() {
-                    print!("{:?} ", replica.stream.peer_addr());
-                }
+                println!("Replicas: {:?}", replicas);
             }
             if is_write_command(&command) {
                 propagate_command_to_replica(received, &replicas);
@@ -236,9 +242,11 @@ fn propagate_command_to_replica(
         let mut stream = &replica.stream;
         print!("Propagating command to replica: ");
         print!("{:?} ", stream.peer_addr());
-        print!("Command: {}", received.to_string());
+        print!("Command: {}", received);
         match stream.write(received.as_bytes()) {
-            Ok(_) => {}
+            Ok(_) => {
+                println!("Command propagated successfully");
+            }
             Err(_) => {
                 println!("Error propagating command to replica");
             }
