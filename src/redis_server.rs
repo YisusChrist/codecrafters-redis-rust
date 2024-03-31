@@ -130,11 +130,9 @@ fn handle_incoming_connection(
             let response = callback(&parts, &storage, &role);
             // Send the response only if the role is master
             //println!("{:?}", role);
-            if let ServerRole::Master = *role {
-                if let Err(_) = stream.write(response.as_bytes()) {
-                    println!("Error writing to stream");
-                    break;
-                }
+            if let Err(_) = stream.write(response.as_bytes()) {
+                println!("Error writing to stream");
+                break;
             }
             if response.starts_with("+FULLRESYNC") {
                 send_empty_rdb_file(&mut stream);
