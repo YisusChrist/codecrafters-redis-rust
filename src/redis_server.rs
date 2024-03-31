@@ -118,7 +118,7 @@ fn handle_incoming_connection(
             }
         };
         let received = String::from_utf8_lossy(&buf[..n]);
-        //println!("Received: {}", received);
+        println!("Received: {}", received);
         let parts = received.split("\r\n").collect::<Vec<&str>>();
         if parts.len() == 0 || !(parts[0].starts_with("*")) {
             continue;
@@ -128,8 +128,6 @@ fn handle_incoming_connection(
         let command = parts[2].to_lowercase();
         if let Some(callback) = commands.get(&command) {
             let response = callback(&parts, &storage, &role);
-            // Send the response only if the role is master
-            //println!("{:?}", role);
             if let Err(_) = stream.write(response.as_bytes()) {
                 println!("Error writing to stream");
                 break;
@@ -200,7 +198,7 @@ fn read_from_stream(stream: &mut TcpStream) -> String {
     let mut buf = [0; 1024];
     let n = stream.read(&mut buf).unwrap();
     let received = String::from_utf8_lossy(&buf[..n]).to_string();
-    //println!("Received: {}", received);
+    println!("Handshake Received: {}", received);
     received
 }
 
