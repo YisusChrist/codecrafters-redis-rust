@@ -132,7 +132,7 @@ fn handle_incoming_connection(
             let response = callback(&parts, &storage, &role);
             // Check if the current server is a replica and the command comes from the master
             if let ServerRole::Replica { .. } = *role {
-                if stream.peer_addr().unwrap().port() == 6380 {
+                if stream.peer_addr().unwrap().port() == 6379 {
                     println!("Ignoring command from master");
                 }
             } else {
