@@ -234,6 +234,9 @@ fn propagate_command_to_replica(
     let replicas = replicas.lock().unwrap();
     for replica in replicas.iter() {
         let mut stream = &replica.stream;
+        print!("Propagating command to replica: ");
+        print!("{:?} ", stream.peer_addr());
+        print!("Command: {}", received.to_string());
         match stream.write(received.as_bytes()) {
             Ok(_) => {}
             Err(_) => {
