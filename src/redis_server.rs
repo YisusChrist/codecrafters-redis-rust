@@ -157,11 +157,9 @@ fn handle_incoming_connection(
                 propagate_command_to_replica(received, &replicas);
             }
         } else {
-            let response = "Invalid command".to_string();
-            if let Err(_) = stream.write(response.as_bytes()) {
-                println!("Error writing to stream");
-                break;
-            }
+            // Process propagated command
+            let mut storage = storage.lock().unwrap();
+            execute_propagated_command(&command, &parts, &mut storage);
         }
     }
 }
@@ -199,7 +197,6 @@ fn handshake(stream: &mut TcpStream) {
     // Await for FULLRESYNC response
     read_from_stream(stream);
     // Await for RDB file
-    read_from_stream(stream);
     read_from_stream(stream);
 }
 
@@ -252,6 +249,34 @@ fn propagate_command_to_replica(
             Err(_) => {
                 println!("Error propagating command to replica");
             }
+        }
+    }
+}
+
+fn execute_propagated_command(
+    command: &str,
+    parts: &[&str],
+    storage: &mut HashMap<String, (String, SystemTime)>,
+) {
+    match command {
+        "set" => {
+            // Execute SET command
+            if parts.len() >= 4 {
+                let key = parts[3].to_string();
+                let value = parts[4].to_string();
+                storage.insert(key, (value, SystemTime::now()));
+            }
+        }
+        "del" => {
+            // Execute DEL command
+            if parts.len() >= 3 {
+                let key = parts[3].to_string();
+                storage.remove(&key);
+            }
+        }
+        _ => {
+            // Ignore other commands
+            println!("Received unhandled propagated command: {}", command);
         }
     }
 }
