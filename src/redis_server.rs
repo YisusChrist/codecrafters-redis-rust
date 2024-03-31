@@ -131,15 +131,17 @@ fn handle_incoming_connection(
         if let Some(callback) = commands.get(&command) {
             let response = callback(&parts, &storage, &role);
             // Check if the current server is a replica and the command comes from the master
+            /*
             if let ServerRole::Replica { .. } = *role {
                 if stream.peer_addr().unwrap().port() == 6379 {
                     println!("Ignoring command from master");
                 }
             } else {
-                if let Err(_) = stream.write(response.as_bytes()) {
-                    println!("Error writing to stream");
-                    break;
-                }
+            }
+            */
+            if let Err(_) = stream.write(response.as_bytes()) {
+                println!("Error writing to stream");
+                break;
             }
             if response.starts_with("+FULLRESYNC") {
                 send_empty_rdb_file(&mut stream);
