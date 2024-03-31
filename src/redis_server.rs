@@ -114,8 +114,9 @@ fn handle_incoming_connection(
         let n = match stream.read(&mut buf) {
             Ok(n) => n,
             Err(_) => {
-                println!("Error reading from stream");
-                break;
+                //println!("Error reading from stream");
+                //break;
+                continue;
             }
         };
         let received = String::from_utf8_lossy(&buf[..n]);
